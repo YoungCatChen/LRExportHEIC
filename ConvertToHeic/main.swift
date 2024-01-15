@@ -1,11 +1,13 @@
-//
-//  main.swift
-//  ConvertToHeic
-//
-//  Created by YoungCat on 1/15/24.
-//
-
+import ConsoleKit
 import Foundation
 
-print("Hello, World!")
+let console: Console = Terminal()
+var input = CommandInput(arguments: CommandLine.arguments)
+var context = CommandContext(console: console, input: input)
 
+do {
+  try console.run(ExportHEICCommand(), input: input)
+} catch {
+  console.error("\(error)")
+  exit(1)
+}

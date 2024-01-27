@@ -1,8 +1,6 @@
 import Foundation
 import XCTest
 
-@testable import func LRExportHEIC.qualitySearch
-
 final class QualitySearchTests: XCTestCase {
   private var getFileSizeByQualityFnCallCount = 0
 

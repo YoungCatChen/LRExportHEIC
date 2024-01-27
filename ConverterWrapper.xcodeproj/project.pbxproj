@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C61226D2B64969800C51150 /* LRExportHEICTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C61226B2B64969800C51150 /* LRExportHEICTests.swift */; };
+		0C61226E2B64969800C51150 /* QualitySearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C61226C2B64969800C51150 /* QualitySearchTests.swift */; };
+		0C61227D2B649B9500C51150 /* QualitySearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79762B55C02D00E05595 /* QualitySearch.swift */; };
 		F30AC0362B55B9A10062A2FD /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30AC0352B55B9A10062A2FD /* main.swift */; };
 		F3563CF22B55B76F002CB007 /* ConverterWrapperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF12B55B76F002CB007 /* ConverterWrapperApp.swift */; };
 		F3563CF42B55B76F002CB007 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF32B55B76F002CB007 /* ContentView.swift */; };
@@ -57,6 +60,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0C6122642B64964C00C51150 /* ConvertToHeicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConvertToHeicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C61226B2B64969800C51150 /* LRExportHEICTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LRExportHEICTests.swift; sourceTree = "<group>"; };
+		0C61226C2B64969800C51150 /* QualitySearchTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QualitySearchTests.swift; sourceTree = "<group>"; };
 		F30AC0332B55B9A10062A2FD /* ConvertToHeic */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ConvertToHeic; sourceTree = BUILT_PRODUCTS_DIR; };
 		F30AC0352B55B9A10062A2FD /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F3563CEE2B55B76F002CB007 /* ConverterWrapper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ConverterWrapper.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -76,6 +82,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0C6122612B64964C00C51150 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F30AC0302B55B9A10062A2FD /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,6 +109,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0C6122652B64964C00C51150 /* ConvertToHeicTests */ = {
+			isa = PBXGroup;
+			children = (
+				0C61226B2B64969800C51150 /* LRExportHEICTests.swift */,
+				0C61226C2B64969800C51150 /* QualitySearchTests.swift */,
+			);
+			path = ConvertToHeicTests;
+			sourceTree = "<group>";
+		};
 		F30AC0342B55B9A10062A2FD /* ConvertToHeic */ = {
 			isa = PBXGroup;
 			children = (
@@ -115,6 +137,7 @@
 			children = (
 				F3563CF02B55B76F002CB007 /* ConverterWrapper */,
 				F30AC0342B55B9A10062A2FD /* ConvertToHeic */,
+				0C6122652B64964C00C51150 /* ConvertToHeicTests */,
 				F3563CEF2B55B76F002CB007 /* Products */,
 				F35C79832B55C18400E05595 /* Frameworks */,
 			);
@@ -127,6 +150,7 @@
 			children = (
 				F3563CEE2B55B76F002CB007 /* ConverterWrapper.app */,
 				F30AC0332B55B9A10062A2FD /* ConvertToHeic */,
+				0C6122642B64964C00C51150 /* ConvertToHeicTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -163,6 +187,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0C6122632B64964C00C51150 /* ConvertToHeicTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C61226A2B64964C00C51150 /* Build configuration list for PBXNativeTarget "ConvertToHeicTests" */;
+			buildPhases = (
+				0C6122602B64964C00C51150 /* Sources */,
+				0C6122612B64964C00C51150 /* Frameworks */,
+				0C6122622B64964C00C51150 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ConvertToHeicTests;
+			productName = ConvertToHeicTests;
+			productReference = 0C6122642B64964C00C51150 /* ConvertToHeicTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		F30AC0322B55B9A10062A2FD /* ConvertToHeic */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F30AC0372B55B9A10062A2FD /* Build configuration list for PBXNativeTarget "ConvertToHeic" */;
@@ -212,6 +253,9 @@
 				LastSwiftUpdateCheck = 1520;
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
+					0C6122632B64964C00C51150 = {
+						CreatedOnToolsVersion = 15.2;
+					};
 					F30AC0322B55B9A10062A2FD = {
 						CreatedOnToolsVersion = 15.2;
 					};
@@ -238,11 +282,19 @@
 			targets = (
 				F3563CED2B55B76F002CB007 /* ConverterWrapper */,
 				F30AC0322B55B9A10062A2FD /* ConvertToHeic */,
+				0C6122632B64964C00C51150 /* ConvertToHeicTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0C6122622B64964C00C51150 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F3563CEC2B55B76F002CB007 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -255,6 +307,16 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0C6122602B64964C00C51150 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C61227D2B649B9500C51150 /* QualitySearch.swift in Sources */,
+				0C61226E2B64969800C51150 /* QualitySearchTests.swift in Sources */,
+				0C61226D2B64969800C51150 /* LRExportHEICTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F30AC02F2B55B9A10062A2FD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -289,6 +351,38 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0C6122682B64964C00C51150 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W5MWTSVZPB;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.youngcat.ConverterWrapper.ConvertToHeicTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		0C6122692B64964C00C51150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W5MWTSVZPB;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.youngcat.ConverterWrapper.ConvertToHeicTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		F30AC0382B55B9A10062A2FD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -500,6 +594,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0C61226A2B64964C00C51150 /* Build configuration list for PBXNativeTarget "ConvertToHeicTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0C6122682B64964C00C51150 /* Debug */,
+				0C6122692B64964C00C51150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F30AC0372B55B9A10062A2FD /* Build configuration list for PBXNativeTarget "ConvertToHeic" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

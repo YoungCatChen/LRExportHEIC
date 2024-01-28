@@ -1,3 +1,4 @@
+// TODO: change this to match the future Makefile.
 {
   "configurations": [
     {
@@ -28,6 +29,54 @@
       ],
       "cwd": "${workspaceFolder:LRExportHEIC}",
       "preLaunchTask": "swift: Build All"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "sourceLanguages": [
+        "swift"
+      ],
+      "args": [],
+      "cwd": "${workspaceFolder:LRExportHEIC}",
+      "name": "Debug ConvertToHeic",
+      "program": "${workspaceFolder:LRExportHEIC}/.build/debug/ConvertToHeic",
+      "preLaunchTask": "swift: Build Debug ConvertToHeic"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "sourceLanguages": [
+        "swift"
+      ],
+      "args": [],
+      "cwd": "${workspaceFolder:LRExportHEIC}",
+      "name": "Release ConvertToHeic",
+      "program": "${workspaceFolder:LRExportHEIC}/.build/release/ConvertToHeic",
+      "preLaunchTask": "swift: Build Release ConvertToHeic"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "sourceLanguages": [
+        "swift"
+      ],
+      "args": [],
+      "cwd": "${workspaceFolder:LRExportHEIC}",
+      "name": "Debug ConverterWrapper",
+      "program": "${workspaceFolder:LRExportHEIC}/.build/debug/ConverterWrapper",
+      "preLaunchTask": "swift: Build Debug ConverterWrapper"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "sourceLanguages": [
+        "swift"
+      ],
+      "args": [],
+      "cwd": "${workspaceFolder:LRExportHEIC}",
+      "name": "Release ConverterWrapper",
+      "program": "${workspaceFolder:LRExportHEIC}/.build/release/ConverterWrapper",
+      "preLaunchTask": "swift: Build Release ConverterWrapper"
     }
   ]
 }

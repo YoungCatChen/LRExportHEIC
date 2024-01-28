@@ -11,13 +11,16 @@ let package = Package(
   ],
   targets: [
     .executableTarget(
-      name: "LRExportHEIC",
+      name: "ConvertToHeic",
       dependencies: [
         .product(name: "ConsoleKit", package: "console-kit")
-      ]
+      ],
+      path: "ConvertToHeic"
     ),
     .testTarget(
-      name: "LRExportHEICTests",
-      dependencies: ["LRExportHEIC"]),
+      name: "ConvertToHeicTests",
+      dependencies: ["ConvertToHeic"],
+      path: "ConvertToHeicTests"
+    ),
   ]
 )

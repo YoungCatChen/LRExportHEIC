@@ -5,21 +5,21 @@ debug: build-debug/ExportHEIC.lrdevplugin
 clean-debug:
 	rm -rf ./build-debug ./.build
 
-build-debug/ExportHEIC.lrdevplugin: \
-		$(wildcard LRPlugin/*) \
-		build-debug/ConvertToHeic
-	mkdir -p $@/ConverterWrapper.app/Contents/MacOS/
-	cd $@ && for f in $(wildcard LRPlugin/*); do ln -s -f ../../$$f; done
-	cd $@/ConverterWrapper.app/Contents/MacOS && ln -s -f ../../../../ConvertToHeic
+.build/apple/Products/Debug/ConvertToHeic: $(wildcard ConvertToHeic/*)
+	swift build --configuration debug --arch x86_64 --arch arm64
+	@test -x $@
 	@touch -c $@
 
 build-debug/ConvertToHeic: .build/apple/Products/Debug/ConvertToHeic
 	mkdir -p $(@D)
 	cd $(@D) && ln -s -f ../$< ./
 
-.build/apple/Products/Debug/ConvertToHeic: $(wildcard ConvertToHeic/*)
-	swift build --configuration debug --arch x86_64 --arch arm64
-	@test -x $@
+build-debug/ExportHEIC.lrdevplugin: \
+		$(wildcard LRPlugin/*) \
+		build-debug/ConvertToHeic
+	mkdir -p $@/ConverterWrapper.app/Contents/MacOS/
+	cd $@ && for f in $(wildcard LRPlugin/*); do ln -s -f ../../$$f; done
+	cd $@/ConverterWrapper.app/Contents/MacOS && ln -s -f ../../../../ConvertToHeic
 	@touch -c $@
 
 

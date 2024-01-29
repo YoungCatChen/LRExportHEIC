@@ -15,7 +15,7 @@
 		F3563CF22B55B76F002CB007 /* ConverterWrapperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF12B55B76F002CB007 /* ConverterWrapperApp.swift */; };
 		F3563CF42B55B76F002CB007 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF32B55B76F002CB007 /* ContentView.swift */; };
 		F3563CF62B55B770002CB007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F3563CF52B55B770002CB007 /* Assets.xcassets */; };
-		F3563CF92B55B770002CB007 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F3563CF82B55B770002CB007 /* Preview Assets.xcassets */; };
+		F3563CF92B55B770002CB007 /* PreviewAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F3563CF82B55B770002CB007 /* PreviewAssets.xcassets */; };
 		F35C79732B55BAF500E05595 /* ConvertToHeic in CopyFiles */ = {isa = PBXBuildFile; fileRef = F30AC0332B55B9A10062A2FD /* ConvertToHeic */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		F35C797A2B55C02D00E05595 /* ExportHEICCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79742B55C02D00E05595 /* ExportHEICCommand.swift */; };
 		F35C797B2B55C02D00E05595 /* EnhancedOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79752B55C02D00E05595 /* EnhancedOptions.swift */; };
@@ -69,7 +69,7 @@
 		F3563CF12B55B76F002CB007 /* ConverterWrapperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConverterWrapperApp.swift; sourceTree = "<group>"; };
 		F3563CF32B55B76F002CB007 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F3563CF52B55B770002CB007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F3563CF82B55B770002CB007 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		F3563CF82B55B770002CB007 /* PreviewAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = PreviewAssets.xcassets; sourceTree = "<group>"; };
 		F3563CFA2B55B770002CB007 /* ConverterWrapper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ConverterWrapper.entitlements; sourceTree = "<group>"; };
 		F35C79742B55C02D00E05595 /* ExportHEICCommand.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExportHEICCommand.swift; sourceTree = "<group>"; };
 		F35C79752B55C02D00E05595 /* EnhancedOptions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EnhancedOptions.swift; sourceTree = "<group>"; };
@@ -162,17 +162,17 @@
 				F3563CF32B55B76F002CB007 /* ContentView.swift */,
 				F3563CF52B55B770002CB007 /* Assets.xcassets */,
 				F3563CFA2B55B770002CB007 /* ConverterWrapper.entitlements */,
-				F3563CF72B55B770002CB007 /* Preview Content */,
+				F3563CF72B55B770002CB007 /* PreviewContent */,
 			);
 			path = ConverterWrapper;
 			sourceTree = "<group>";
 		};
-		F3563CF72B55B770002CB007 /* Preview Content */ = {
+		F3563CF72B55B770002CB007 /* PreviewContent */ = {
 			isa = PBXGroup;
 			children = (
-				F3563CF82B55B770002CB007 /* Preview Assets.xcassets */,
+				F3563CF82B55B770002CB007 /* PreviewAssets.xcassets */,
 			);
-			path = "Preview Content";
+			path = PreviewContent;
 			sourceTree = "<group>";
 		};
 		F35C79832B55C18400E05595 /* Frameworks */ = {
@@ -299,7 +299,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F3563CF92B55B770002CB007 /* Preview Assets.xcassets in Resources */,
+				F3563CF92B55B770002CB007 /* PreviewAssets.xcassets in Resources */,
 				F3563CF62B55B770002CB007 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -354,9 +354,8 @@
 		0C6122682B64964C00C51150 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = W5MWTSVZPB;
+				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0;
@@ -372,9 +371,8 @@
 		0C6122692B64964C00C51150 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = W5MWTSVZPB;
+				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0;
@@ -390,10 +388,6 @@
 		F30AC0382B55B9A10062A2FD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = W5MWTSVZPB;
-				ENABLE_HARDENED_RUNTIME = YES;
 				OTHER_CODE_SIGN_FLAGS = "$(inherited) -i $(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_BUNDLE_IDENTIFIER = net.youngcat.ConverterWrapper.ConvertToHeic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -405,10 +399,6 @@
 		F30AC0392B55B9A10062A2FD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = W5MWTSVZPB;
-				ENABLE_HARDENED_RUNTIME = YES;
 				OTHER_CODE_SIGN_FLAGS = "$(inherited) -i $(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_BUNDLE_IDENTIFIER = net.youngcat.ConverterWrapper.ConvertToHeic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -450,8 +440,12 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = W5MWTSVZPB;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -513,8 +507,12 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = W5MWTSVZPB;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -541,13 +539,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ConverterWrapper/ConverterWrapper.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"ConverterWrapper/Preview Content\"";
-				DEVELOPMENT_TEAM = W5MWTSVZPB;
-				ENABLE_HARDENED_RUNTIME = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"ConverterWrapper/PreviewContent\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "HEIC Converter Dummy App";
@@ -571,13 +565,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ConverterWrapper/ConverterWrapper.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"ConverterWrapper/Preview Content\"";
-				DEVELOPMENT_TEAM = W5MWTSVZPB;
-				ENABLE_HARDENED_RUNTIME = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"ConverterWrapper/PreviewContent\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "HEIC Converter Dummy App";

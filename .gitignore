@@ -1,6 +1,7 @@
 .DS_Store
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-/plugin
+/build-debug
+/build-release
 
 # Xcode
 # from https://github.com/github/gitignore/blob/main/Swift.gitignore

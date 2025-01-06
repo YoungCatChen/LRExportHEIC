@@ -69,28 +69,7 @@ I have tested the plugin to work with Lightroom Classic version v11 and newer.
 
 ## Development
 
-### How does it work?
-
-The plugin creates what the Lightroom SDK calls an "Export post-process action"
-or an "Export Filter Provider". As the name suggests, it allows the plugin to
-run some code after Lightroom has completed the initial processing of the image.
-Here is roughly what happens:
-
-- Lightroom renders the image according to the user's settings.
-- This plugin (ExportHEIC) starts executing and is provided with a list of
-  images and their export settings.
-- ExportHEIC requests a different version of the image to be rendered into a
-  temporary location. According to the Lightroom SDK guide, now it becomes the
-  plugin's responsibility to place the final image in the originally requested
-  location.
-  - The rendering that ExportHEIC requests will be either an 8-bit or a 16-bit
-    TIFF depending on the bit-depth selected in the HEIC settings panel.
- - ExportHEIC uses a helper executable to render the temporary TIFF file created
-   in the previous step into an HEIC file.
- - The HEIC file is placed at the originally requested location.
-   - This is why it has to have a .jpg extension. If the file had a .heic
-     extension instead, Lightroom would say that the export failed because it
-     couldn't find the final rendered file.
+Please refer to [`DEVELOP.md`](DEVELOP.md).
 
 [^1]: Comparing JPEG vs HEIC: Which Is Best?
 https://cloudinary.com/guides/image-formats/jpeg-vs-heic

@@ -1,78 +1,9 @@
-# LRExportHEIC
+# Developing LRExportHEIC
 
-A plugin to allow Lightroom to export HEIC files.
+## How does it work?
 
-![Example Export Window](docs/export-window.png)
-
-### Why HEIC over JPEG?
-
-HEIC (High-Efficiency Image Container) is a modern image format based on HEIF
-and the HEVC codec, offering smaller file sizes with less quality loss.
-Introduced by Apple in 2017 as the default for iPhones, it is now supported by
-major platforms and newer cameras like the Sony A7 IV and Canon R5.
-
-There are two main benefits of HEIC:
-
-- A better compression algorithm, meaning either a lower file size for the same
-  perceived quality (typically 50% smaller[^1]), or a higher quality image
-  at the same file size[^2].
-- 10-bit encoding support, allowing for a wider dynamic range and giving more
-  latitude for further edits than the 8-bit JPEG.
-
-## Installation
-
-- Download the ZIP file from the
-  [latest release](https://github.com/YoungCatChen/LRExportHEIC/releases/latest).
-  - Alternatively, download it from
-    [Adobe Exchange](https://exchange.adobe.com/apps/cc/108244/export-heic).
-- Unzip it to reveal the `ExportHEIC.lrplugin` file. Place it in a place that
-  you won’t delete.
-- Open Lightroom Classic. From the `File` menu, open the `Plug-in Manager`.
-- Click the `Add` button, and select the plugin wherever you saved it. Make sure
-  it is enabled.
-
-## Usage
-
-- Select images and start the export like normal (e.g. Right click + Export).
-- You will see a new “Post-Process Action” in the lower left corner of the
-  export dialog, which you will need to highlight and then click `Insert`.
-- You will see a new panel named "HEIC settings" at the bottom. Note that the
-  regular File Settings panel is unused at this point; all settings made in
-  that panel will be overridden by any setting you choose in the
-  “HEIC settings” panel.
-- Adjust the settings based on quality or file-size.
-
-![Example image quality settings](docs/by-quality.png)
-
-![Example file-size settings](docs/by-filesize.png)
-
-- Click `Export`. Your export should proceed like normal, and you will find
-  your files at the location you selected.
-- The files will have a `.jpg` extension. This is expected. You can rename
-  them to use a `.heic` extension or leave them with the `.jpg` extension.
-  Most applications won’t care about the extension, and will be able to use
-  the file like normal.
-
-The plugin also adds a new item under “Export To” named “Export HEIC”.
-This does nothing more than hide the original “File Settings” panel so
-you don't accidentally make changes there instead of the “HEIC settings” panel.
-However, this is entirely optional and only a cosmetic change.
-
-## Compatibility
-
-Because the CLI component is using macOS APIs to create the HEIC file,
-the only supported platform is macOS. Theoretically there should be nothing
-preventing it from working on earlier versions, but I have only personally
-tested it on macOS Monterey (v12+). It definitely won’t work on Windows.
-
-I have tested the plugin to work with Lightroom Classic version v11 and newer.
-
-## Development
-
-### How does it work?
-
-The plugin creates what the Lightroom SDK calls an "Export post-process action"
-or an "Export Filter Provider". As the name suggests, it allows the plugin to
+The plugin creates what the Lightroom SDK calls an “Export post-process action”
+or an “Export Filter Provider”. As the name suggests, it allows the plugin to
 run some code after Lightroom has completed the initial processing of the image.
 Here is roughly what happens:
 
@@ -92,8 +23,128 @@ Here is roughly what happens:
      extension instead, Lightroom would say that the export failed because it
      couldn't find the final rendered file.
 
-[^1]: Comparing JPEG vs HEIC: Which Is Best?
-https://cloudinary.com/guides/image-formats/jpeg-vs-heic
+## Build for development / debugging purposes
 
-[^2]: Comparison between JPEG, JPEG 2000, JPEG XR and HEIF.
-https://commons.wikimedia.org/wiki/File:Comparison_between_JPEG,_JPEG_2000,_JPEG_XR_and_HEIF.png
+Simply run `make debug`.
+
+A quick build using `swift build` will start to build the swift files
+under the `ConvertToHeic` directory, and a plugin with `.lrdevplugin`
+will be generated under the `build-debug/` directory.
+Lightroom Classic should be able to import it and use it.
+
+Note that this plugin will only work on the computer that built it,
+so it's not suitable for distribution.
+We didn't do code-sign nor notarization in this debug build process,
+while macOS's default setting requires them to help with safety.
+To build a package for distribution, see the section below.
+
+## Build for distribution
+
+TL;DR: Run this command:
+
+```sh
+SIGNING_CERT_PATH=/path/to/your/developer_id_application_certificate.p12 \
+SIGNING_CERT_PASSWORD=your_password \
+API_KEY_ID=1111YOUR1KEY1ID \
+API_KEY_ISSUER=11111111-2222-3333-4444-5555555555 \
+API_KEY_PATH=/path/to/your/authkey.p8 \
+make release
+```
+
+Or this command, if you have code signing certificates and
+notarization credentials already stored in your Keychain:
+
+```sh
+TEAM_ID=1111YOUR1TEAM1ID \
+STORED_CRED=abc \
+make release
+```
+
+### Step 1: Make your code signing certificate ready
+
+Code signing is a macOS security technology that you use to certify that an app
+was created by you, and a Developer ID Application certificate
+with a private key will be needed.
+If you already have one and can find it in the Keychain Access app
+(shown as `Developer ID Application: [Your Name]` with a private key under it),
+you are good to go, and can skip this step.
+
+If you don't, follow
+[this guide](https://developer.apple.com/help/account/create-certificates/create-developer-id-certificates/)
+to create a Developer ID Application certificate.
+
+### Step 2: Make the notarization credentials ready
+
+Notarization is a process that you submit your Developer ID-signed software
+to Apple, which then scans it and performs security checks.
+Follow one of these two options to get the credentials ready:
+
+#### Step 2 option A: App Specific Password
+
+Follow [this guide](https://support.apple.com/en-us/102654) to get an
+App Specific Password. Then run
+
+```sh
+xcrun notarytool store-credentials abc --apple-id your_apple_id@some_mail.com --team-id 1111YOUR1TEAM1ID
+```
+
+When prompted, enter the password you just got.
+The profile “abc” can be changed to other meaningful names.
+Just remember to change `STORED_CRED=abc` accordingly later.
+
+#### Step 2 option B: App Store Connect API key
+
+Follow
+[this guide](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api#Generate-a-Team-Key-and-Assign-It-a-Role)
+to generate a Team Key.
+When prompted to select a “Role” or an “Access”, choose “App Manager”.
+
+Save the key as a `.p8` file, the key ID string and the key issuer string.
+
+### Step 3: Make a release build!
+
+`make release` is the general idea to make a release build for distribution.
+It runs three actions internally - build a code-signed macOS app, notarization,
+and package it with the Lightroom plugin in Lua.
+
+The first action requires a code signing certificate.
+You would need to tell the system how to find your certificate
+via environment variables.
+
+```sh
+# If you have a certificate in your Keychain:
+export TEAM_ID=1111YOUR1TEAM1ID
+
+# Or, if you have a certificate as a separate file:
+export SIGNING_CERT_PATH=/path/to/your/developer_id_application_certificate.p12
+export SIGNING_CERT_PASSWORD=your_password
+```
+
+The second action, notarization, needs to know notarization credentials.
+
+```sh
+# If you did Step 2 Option A:
+export STORED_CRED=abc
+
+# Or, if you did Step 2 Option B:
+export API_KEY_ID=1111YOUR1KEY1ID
+export API_KEY_ISSUER=11111111-2222-3333-4444-5555555555
+export API_KEY_PATH=/path/to/your/authkey.p8
+```
+
+After all environment variables are set, you may make a release build with:
+
+```sh
+make release
+## OR ##
+make release-build     # to just build and code-sign the app
+make release-notarize  # to run notarization (after an app is built)
+make release           # to package up a Lightroom plugin
+```
+
+Note that environment variables can be set in the same line of the command
+for convenience, for example:
+
+```sh
+TEAM_ID=1111YOUR1TEAM1ID SOME_OTHER=env_vars make release-build
+```

@@ -18,7 +18,8 @@ build-debug/ExportHEIC.lrdevplugin: \
 		$(wildcard LRPlugin/*) \
 		build-debug/ConvertToHeic
 	mkdir -p $@/ConverterWrapper.app/Contents/MacOS/
-	cd $@ && for f in $(wildcard LRPlugin/*); do ln -s -f ../../$$f; done
+	cd $@ && for f in $(wildcard LRPlugin/*.lua); do ln -s -f ../../$$f; done
+	scripts/update_version.sh LRPlugin/Info.lua.template > $@/Info.lua
 	cd $@/ConverterWrapper.app/Contents/MacOS && ln -s -f ../../../../ConvertToHeic
 	@touch -c $@
 
@@ -95,7 +96,8 @@ build-release/ExportHEIC.lrplugin: \
 		build-release/notarize.log \
 		build-release/Applications
 	mkdir -p $@
-	cd $@ && for f in $(wildcard LRPlugin/*); do ln -s -f ../../$$f; done
+	cd $@ && for f in $(wildcard LRPlugin/*.lua); do ln -s -f ../../$$f; done
+	scripts/update_version.sh LRPlugin/Info.lua.template > $@/Info.lua
 	cd $@ && ln -s -f ../Applications/ConverterWrapper.app/
 	@touch -c $@
 

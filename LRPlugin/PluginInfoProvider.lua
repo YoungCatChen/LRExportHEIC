@@ -9,7 +9,7 @@ return {
           },
           viewFactory:spacer { height = 12 },
           viewFactory:static_text {
-            title = 'Created by Manu Wallner (GitHub: @milch, Instagram: @supermilch)'
+            title = 'Created by Manu Wallner (GitHub: @milch) and YoungCat (GitHub: @YoungCatChen).'
           },
         }
       }

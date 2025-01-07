@@ -75,11 +75,11 @@ build-release/notarize.log: \
 		echo '2) API_KEY_ID, API_KEY_ISSUER and API_KEY_PATH';  \
 		exit 1;  \
 	fi >&2
-	xcrun notarytool submit --verbose $< ${notarize_auth} --wait | tee $@.attempt
+	xcrun notarytool submit $< ${notarize_auth} --wait | tee $@.attempt
 	@if ! egrep -q ${uuid_regex} $@.attempt; then  \
 		exit 1;  \
 	elif ! grep -q Accepted $@.attempt; then  \
-		xcrun notarytool log --verbose ${notarize_auth} $$(  \
+		xcrun notarytool log ${notarize_auth} $$(  \
 				egrep -o ${uuid_regex} $@.attempt | head -n 1 );  \
 		exit 1;  \
 	fi

@@ -7,12 +7,12 @@ or an “Export Filter Provider”. As the name suggests, it allows the plugin t
 run some code after Lightroom has completed the initial processing of the image.
 Here is roughly what happens:
 
-- Lightroom renders the image according to the user's settings.
+- Lightroom renders the image according to the user’s settings.
 - This plugin (ExportHEIC) starts executing and is provided with a list of
   images and their export settings.
 - ExportHEIC requests a different version of the image to be rendered into a
   temporary location. According to the Lightroom SDK guide, now it becomes the
-  plugin's responsibility to place the final image in the originally requested
+  plugin’s responsibility to place the final image in the originally requested
   location.
   - The rendering that ExportHEIC requests will be either an 8-bit or a 16-bit
     TIFF depending on the bit-depth selected in the HEIC settings panel.
@@ -21,7 +21,7 @@ Here is roughly what happens:
  - The HEIC file is placed at the originally requested location.
    - This is why it has to have a .jpg extension. If the file had a .heic
      extension instead, Lightroom would say that the export failed because it
-     couldn't find the final rendered file.
+     couldn’t find the final rendered file.
 
 ## Build for development / debugging purposes
 
@@ -33,30 +33,29 @@ will be generated under the `build-debug/` directory.
 Lightroom Classic should be able to import it and use it.
 
 Note that this plugin will only work on the computer that built it,
-so it's not suitable for distribution.
-We didn't do code-sign nor notarization in this debug build process,
-while macOS's default setting requires them to help with safety.
+so it’s not suitable for distribution.
+We didn’t do code-sign nor notarization in this debug build process,
+while macOS’s default setting requires them to help with safety.
 To build a package for distribution, see the section below.
 
 ## Build for distribution
 
-TL;DR: Run this command:
-
-```sh
-SIGNING_CERT_PATH=/path/to/your/developer_id_application_certificate.p12 \
-SIGNING_CERT_PASSWORD=your_password \
-API_KEY_ID=1111YOUR1KEY1ID \
-API_KEY_ISSUER=11111111-2222-3333-4444-5555555555 \
-API_KEY_PATH=/path/to/your/authkey.p8 \
-make release
-```
-
-Or this command, if you have code signing certificates and
-notarization credentials already stored in your Keychain:
+TL;DR: Run this command, assuming the code-signing certificate and
+the notarization credentials are stored in your Keychain:
 
 ```sh
 TEAM_ID=1111YOUR1TEAM1ID \
 STORED_CRED=abc \
+make release
+```
+
+Or this command, if you have notarization credentials as an API key file:
+
+```sh
+TEAM_ID=1111YOUR1TEAM1ID \
+API_KEY_ID=1111YOUR1KEY1ID \
+API_KEY_ISSUER=11111111-2222-3333-4444-5555555555 \
+API_KEY_PATH=/path/to/your/authkey.p8 \
 make release
 ```
 
@@ -69,9 +68,10 @@ If you already have one and can find it in the Keychain Access app
 (shown as `Developer ID Application: [Your Name]` with a private key under it),
 you are good to go, and can skip this step.
 
-If you don't, follow
+If you don’t, follow
 [this guide](https://developer.apple.com/help/account/create-certificates/create-developer-id-certificates/)
 to create a Developer ID Application certificate.
+Don’t forget to import the created certificate to your Keychain.
 
 ### Step 2: Make the notarization credentials ready
 
@@ -108,16 +108,11 @@ It runs three actions internally - build a code-signed macOS app, notarization,
 and package it with the Lightroom plugin in Lua.
 
 The first action requires a code signing certificate.
-You would need to tell the system how to find your certificate
-via environment variables.
+Assuming the certificate is already imported into your Keychain,
+you would need to specify via a environment variables which certificate to use.
 
 ```sh
-# If you have a certificate in your Keychain:
 export TEAM_ID=1111YOUR1TEAM1ID
-
-# Or, if you have a certificate as a separate file:
-export SIGNING_CERT_PATH=/path/to/your/developer_id_application_certificate.p12
-export SIGNING_CERT_PASSWORD=your_password
 ```
 
 The second action, notarization, needs to know notarization credentials.

@@ -11,7 +11,8 @@ jobs:
       - name: Checkout code and all tags
         uses: actions/checkout@v4
         with:
-          # Why not just "fetch-tags: 1"?
+          # `update_version.sh` will need all the tags.
+          # Why not just "fetch-tags: 1"? See
           # https://github.com/actions/checkout/issues/1471#issuecomment-1755639487
           fetch-depth: 0
           filter: tree:0
@@ -25,12 +26,10 @@ jobs:
       - name: Checkout code and all tags
         uses: actions/checkout@v4
         with:
-          # Why not just "fetch-tags: 1"?
-          # https://github.com/actions/checkout/issues/1471#issuecomment-1755639487
           fetch-depth: 0
           filter: tree:0
 
-      - name: Run "make release-build"
+      - name: Prepare and run "make release-build".
         uses: ./.github/actions/make-release-build
         with:
           CERT_BASE64: ${{ secrets.CERT_BASE64 }}

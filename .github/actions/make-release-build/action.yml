@@ -1,0 +1,37 @@
+name: make release-build
+description: Prepare and run "make release-build".
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Print Xcode version
+      shell: bash
+      run: xcodebuild -version
+
+    - name: Setup a temporary keychain
+      env:
+        CERT_BASE64: ${{ secrets.CERT_BASE64 }}
+        CERT_PASS: ${{ secrets.CERT_PASS }}
+      shell: bash
+      run: |  # Heavily borrowed from milch/LRExportHEIC's `sign_with_temp_keychain.sh`.
+        security create-keychain -p pass tmp.keychain
+        security default-keychain -s tmp.keychain
+        security list-keychains -s tmp.keychain
+        security unlock-keychain -p pass tmp.keychain
+        echo "$CERT_BASE64" | base64 -d > cert.p12
+        security import cert.p12 -P "$CERT_PASS" -k tmp.keychain -T /usr/bin/xcodebuild -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k pass tmp.keychain
+
+    - name: Run "make release-build"
+      env:
+        TEAM_ID: ${{ vars.TEAM_ID }}
+      shell: bash
+      run: make release-build
+
+    - name: Clean up the temporary keychain
+      if: always()
+      shell: bash
+      run: |
+        security delete-keychain tmp.keychain
+        rm -f tmp.keychain

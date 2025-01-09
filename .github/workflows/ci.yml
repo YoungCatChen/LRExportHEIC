@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  make-debug:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Run "make debug"
+        run: make debug
+
+  make-release-build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Run "make release-build"
+        uses: ./.github/actions/make-release-build

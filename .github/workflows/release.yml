@@ -1,0 +1,46 @@
+name: Make a release package and attach it to a release
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - created
+
+jobs:
+  make-release:
+    runs-on: macos-latest
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare and run "make release-build".
+        uses: ./.github/actions/make-release-build
+
+      - name: Prepare for notarization with the api key file
+        env:
+          API_KEY_BASE64: ${{ secrets.API_KEY_BASE64 }}
+        run: |
+          echo "$API_KEY_BASE64" | base64 -d > key.p8
+
+      - name: Run "make release-notarize"
+        env:
+          API_KEY_ID: ${{ secrets.API_KEY_ID }}
+          API_KEY_ISSUER: ${{ secrets.API_KEY_ISSUER }}
+          API_KEY_PATH: key.p8
+        run: make release-notarize
+
+      - name: Run "make release"
+        run: make release
+
+      - name: Upload the built package
+        uses: actions/upload-artifact@v4
+        with:
+          path: build-release/ExportHEIC.lrplugin.zip
+          compression-level: 0
+
+      - name: Associate the built package to the release, if any
+        if: ${{ github.event_name == 'release' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build-release/ExportHEIC.lrplugin.zip

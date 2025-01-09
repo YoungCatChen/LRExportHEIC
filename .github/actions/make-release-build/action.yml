@@ -1,6 +1,14 @@
 name: make release-build
 description: Prepare and run "make release-build".
 
+inputs:
+  CERT_BASE64:
+    required: true
+  CERT_PASS:
+    required: true
+  TEAM_ID:
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -11,8 +19,8 @@ runs:
 
     - name: Setup a temporary keychain
       env:
-        CERT_BASE64: ${{ secrets.CERT_BASE64 }}
-        CERT_PASS: ${{ secrets.CERT_PASS }}
+        CERT_BASE64: ${{ inputs.CERT_BASE64 }}
+        CERT_PASS: ${{ inputs.CERT_PASS }}
       shell: bash
       run: |  # Heavily borrowed from milch/LRExportHEIC's `sign_with_temp_keychain.sh`.
         security create-keychain -p pass tmp.keychain
@@ -25,7 +33,7 @@ runs:
 
     - name: Run "make release-build"
       env:
-        TEAM_ID: ${{ vars.TEAM_ID }}
+        TEAM_ID: ${{ inputs.TEAM_ID }}
       shell: bash
       run: make release-build
 

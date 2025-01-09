@@ -13,6 +13,8 @@ jobs:
 
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-tags: 1
 
       - name: Prepare and run "make release-build".
         uses: ./.github/actions/make-release-build
@@ -25,8 +27,8 @@ jobs:
 
       - name: Run "make release-notarize"
         env:
-          API_KEY_ID: ${{ secrets.API_KEY_ID }}
-          API_KEY_ISSUER: ${{ secrets.API_KEY_ISSUER }}
+          API_KEY_ID: ${{ vars.API_KEY_ID }}
+          API_KEY_ISSUER: ${{ vars.API_KEY_ISSUER }}
           API_KEY_PATH: key.p8
         run: make release-notarize
 

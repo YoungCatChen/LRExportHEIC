@@ -11,10 +11,13 @@ jobs:
     runs-on: macos-latest
     steps:
 
-      - name: Checkout Code
+      - name: Checkout code and all tags
         uses: actions/checkout@v4
         with:
-          fetch-tags: 1
+          # Why not just "fetch-tags: 1"?
+          # https://github.com/actions/checkout/issues/1471#issuecomment-1755639487
+          fetch-depth: 0
+          filter: tree:0
 
       - name: Prepare and run "make release-build".
         uses: ./.github/actions/make-release-build

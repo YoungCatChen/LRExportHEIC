@@ -1,3 +1,6 @@
+# Syntax:
+# https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+
 name: Make a release package and attach it to a release
 
 on:
@@ -47,6 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: build-release/ExportHEIC.lrplugin.zip
+          name: ExportHEIC.lrplugin.zip
           compression-level: 0
 
       - name: Associate the built package to the release, if any

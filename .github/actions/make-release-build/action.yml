@@ -1,3 +1,6 @@
+# Syntax:
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+
 name: make release-build
 description: Prepare and run "make release-build".
 

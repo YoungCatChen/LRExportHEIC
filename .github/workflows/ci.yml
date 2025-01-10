@@ -1,8 +1,18 @@
+# Syntax:
+# https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+
 name: CI
 
 on:
   workflow_dispatch:
   push:
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.**'
+      - 'LICENSE'
 
 jobs:
   make-debug:

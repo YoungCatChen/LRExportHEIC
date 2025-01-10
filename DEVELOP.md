@@ -1,5 +1,7 @@
 # Developing LRExportHEIC
 
+[![CI](https://github.com/YoungCatChen/LRExportHEIC/actions/workflows/ci.yml/badge.svg)](https://github.com/YoungCatChen/LRExportHEIC/actions/workflows/ci.yml)
+
 ## How does it work?
 
 The plugin creates what the Lightroom SDK calls an “Export post-process action”
@@ -40,8 +42,8 @@ To build a package for distribution, see the section below.
 
 ## Build for distribution
 
-TL;DR: Run this command, assuming the code-signing certificate and
-the notarization credentials are stored in your Keychain:
+TL;DR: install Xcode. Import the code-signing certificate and the notarization
+credentials into your Keychain. Then run this command:
 
 ```sh
 TEAM_ID=1111YOUR1TEAM1ID \
@@ -49,7 +51,8 @@ STORED_CRED=abc \
 make release
 ```
 
-Or this command, if you have notarization credentials as an API key file:
+If you have notarization credentials as a separate API key file,
+run this command instead:
 
 ```sh
 TEAM_ID=1111YOUR1TEAM1ID \
@@ -58,6 +61,11 @@ API_KEY_ISSUER=11111111-2222-3333-4444-5555555555 \
 API_KEY_PATH=/path/to/your/authkey.p8 \
 make release
 ```
+
+### Step 0: Install Xcode
+
+Just install [Xcode](https://apps.apple.com/us/app/xcode/id497799835),
+and make sure `xcodebuild -version` prints a valid version.
 
 ### Step 1: Make your code signing certificate ready
 
@@ -143,3 +151,11 @@ for convenience, for example:
 ```sh
 TEAM_ID=1111YOUR1TEAM1ID SOME_OTHER=env_vars make release-build
 ```
+
+### Step 4: Done
+
+The newly built plugin is at `build-release/ExportHEIC.lrplugin` as a directory.
+Lightroom Classic should be able to import it and use it without any issue.
+
+To distribute the plugin, copy the zip file at
+`build-release/ExportHEIC.lrplugin.zip`.

@@ -25,6 +25,19 @@ Here is roughly what happens:
      extension instead, Lightroom would say that the export failed because it
      couldn’t find the final rendered file.
 
+Note that the helper executable is hidden inside a wrapper app,
+`ConverterWrapper.app`. It provides no difference on functionality, but is
+required by Apple to perform notarization where security checks are performed.
+
+## History
+
+This repository originally came from a fork of
+[milch/LRExportHEIC](https://github.com/milch/LRExportHEIC).
+They share the same functonality, but the plugin this repo produces can go
+through Apple notarization that modern macOS expects.
+
+Branch `upstream-main` keeps track of the origin’s `main` branch.
+
 ## Build for development / debugging purposes
 
 Simply run `make debug`.

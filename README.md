@@ -1,5 +1,7 @@
 # LRExportHEIC
 
+_(Forked from [milch/LRExportHEIC](https://github.com/milch/LRExportHEIC).)_
+
 A plugin to allow Lightroom Classic to export HEIC / HEIF files.
 
 ![Example Export Window](docs/export-window.png)

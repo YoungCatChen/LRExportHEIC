@@ -1,17 +1,17 @@
 # LRExportHEIC
 
-A plugin to allow Lightroom to export HEIC files.
+A plugin to allow Lightroom Classic to export HEIC / HEIF files.
 
 ![Example Export Window](docs/export-window.png)
 
-### Why HEIC over JPEG?
+### Why HEIC/HEIF over JPEG?
 
 HEIC (High-Efficiency Image Container) is a modern image format based on HEIF
 and the HEVC codec, offering smaller file sizes with less quality loss.
 Introduced by Apple in 2017 as the default for iPhones, it is now supported by
 major platforms and newer cameras like the Sony A7 IV and Canon R5.
 
-There are two main benefits of HEIC:
+There are two main benefits of HEIC/HEIF:
 
 - A better compression algorithm, meaning either a lower file size for the same
   perceived quality (typically 50% smaller[^1]), or a higher quality image
@@ -60,7 +60,9 @@ However, this is entirely optional and only a cosmetic change.
 
 ## Compatibility
 
-Because the CLI component is using macOS APIs to create the HEIC file,
+macOS only; okay on both Apple M1-M4 chips and Intel chips.
+
+Because the CLI component is using macOS APIs to create the HEIC/HEIF file,
 the only supported platform is macOS. Theoretically there should be nothing
 preventing it from working on earlier versions, but I have only personally
 tested it on macOS Monterey (v12+). It definitely won’t work on Windows.

@@ -3,7 +3,7 @@
 ///
 /// - Parameter maxSize: The target file size. The resulting file size must equal to or be less then the limit,
 ///     unless `minQuality` is reached.
-/// - Parameter sizeAccuracy: An allowance in range 0 - 1. As it tries multiple times to find the best quality,
+/// - Parameter sizeAccuracy: An allowance in range 0 - 1. As it tries multiple times to find the satisfying quality,
 ///     it can stop early to save time if a file's size satisfies `maxSize * sizeAccuracy <= size <=
 ///     maxSize`.
 /// - Parameter qualityRange: The range of quality to attempt within. The range should be between 0 - 1, inclusive.

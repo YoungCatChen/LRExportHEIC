@@ -19,9 +19,9 @@ struct ExportHEICCommand: Command {
     var inputFile: String!
 
     @Option(
-      name: "quality", help: "Compression quality between 0.0-1.0. Cannot be used with --size-limit",
+      name: "quality", help: "Compression quality. Cannot be used with --size-limit. Allowed range: 0.0 - 1.0",
       allowedValues: 0.0...1.0)
-    var quality: Float?
+    var quality: Double?
 
     @Option(
       name: "size-limit",
@@ -31,14 +31,22 @@ struct ExportHEICCommand: Command {
     var sizeLimit: Int64?
 
     @Option(
+      name: "size-limit-accuracy",
+      help: "When this program tries multiple times to find the satisfying quality, it can stop early to save time "
+        + "if the file's size satisfies `size limit * accuracy <= actual size <= size limit`. "
+        + "Allowed range: 0.1 - 1.0. Default: 0.9",
+      allowedValues: 0.1...1.0)
+    var sizeLimitAccuracy: Double?
+
+    @Option(
       name: "min-quality",
-      help: "Minimal allowed compression quality, between 0.0-1.0, if --size-limit is used. Default: 0.0",
+      help: "Minimal allowed compression quality, if --size-limit is used. Allowed range: 0.0 - 1.0. Default: 0.0",
       allowedValues: 0.0...1.0)
     var minQuality: Double?
 
     @Option(
       name: "max-quality",
-      help: "Maximal allowed compression quality, between 0.0-1.0, if --size-limit is used. Default: 1.0",
+      help: "Maximal allowed compression quality, if --size-limit is used. Allowed range: 0.0 - 1.0. Default: 1.0",
       allowedValues: 0.0...1.0)
     var maxQuality: Double?
 
@@ -55,7 +63,7 @@ struct ExportHEICCommand: Command {
     @Argument(name: "output-file", help: "Path to where the output file will be placed")
     var outputFile: String
 
-    @Flag(name: "verbose")
+    @Flag(name: "verbose", help: "Print the decision making process verbosely")
     var verbose: Bool
 
     var inputFileURL: URL! {
@@ -119,6 +127,7 @@ struct ExportHEICCommand: Command {
         to: signature.outputFileURL,
         in: colorSpace,
         withSizeLimit: signature.sizeLimit!,
+        withSizeLimitAccuracy: signature.sizeLimitAccuracy ?? 0.9,
         withinRange: (signature.minQuality ?? 0)...(signature.maxQuality ?? 1),
         shouldUseHEIF10: shouldUseHEIF10,
         verbose: signature.verbose)

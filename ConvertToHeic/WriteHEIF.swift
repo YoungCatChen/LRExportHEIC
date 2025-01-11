@@ -4,7 +4,7 @@ func writeHEIF(
   of image: CIImage,
   to url: URL,
   in colorSpace: CGColorSpace,
-  withQuality quality: Float,
+  withQuality quality: Double,
   shouldUseHEIF10: Bool,
   verbose: Bool
 ) throws {

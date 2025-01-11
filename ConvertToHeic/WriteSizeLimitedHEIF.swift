@@ -5,6 +5,7 @@ func writeSizeLimitedHEIF(
   to destURL: URL,
   in colorSpace: CGColorSpace,
   withSizeLimit size: Int64,
+  withSizeLimitAccuracy sizeAccuracy: Double,
   withinRange qualityRange: ClosedRange<Double>,
   shouldUseHEIF10: Bool,
   verbose: Bool
@@ -30,7 +31,7 @@ func writeSizeLimitedHEIF(
         of: image,
         to: destURL,
         in: colorSpace,
-        withQuality: Float(quality),
+        withQuality: quality,
         shouldUseHEIF10: shouldUseHEIF10,
         verbose: verbose)
       qualitiesAndURLs[quality] = destURL
@@ -48,7 +49,7 @@ func writeSizeLimitedHEIF(
   // In multiple attempts, generate the images and try to find the fittest quality.
   let quality = qualitySearch(
     byTargetFileSize: size,
-    withAccuracy: 0.8,
+    withAccuracy: sizeAccuracy,
     withinRange: qualityRange,
     getFileSizeByQualityFn: writeTempHEIFAndGetSize)
 
@@ -73,7 +74,7 @@ func writeSizeLimitedHEIF(
       of: image,
       to: destURL,
       in: colorSpace,
-      withQuality: Float(quality),
+      withQuality: quality,
       shouldUseHEIF10: shouldUseHEIF10,
       verbose: verbose)
   }

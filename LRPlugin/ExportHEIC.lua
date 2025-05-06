@@ -147,7 +147,9 @@ return {
       end,
     }
 
-    local converterPath = LrPathUtils.child(_PLUGIN.path, 'LRExportHEIC')
+    local converterPath = LrPathUtils.child(
+        _PLUGIN.path,
+        'ConverterWrapper.app/Contents/MacOS/ConvertToHeic')
     local cmd = '"' .. converterPath .. '"'
     if p.HEICUseSizeLimit then
       cmd = (cmd .. ' --size-limit ' .. (p.HEICSizeLimit * 1000)

@@ -157,12 +157,13 @@ return {
     local renditionOptions = {
       filterSettings = function( renditionToSatisfy, exportSettings )
         if p.HEICUseHDR then
-          exportSettings.LR_format = 'AVIF'
+          exportSettings.LR_format = 'TIFF'
           exportSettings.LR_enableHDRDisplay = true
           exportSettings.LR_export_enableHDRDisplay = true
-          exportSettings.LR_export_bitDepth = 10
+          exportSettings.LR_export_bitDepth = 32
           exportSettings.LR_export_colorSpace = "sRGB_hdr"
-          exportSettings.LR_avif_quality = 1.0
+          exportSettings.LR_maximumCompatibility = false
+          exportSettings.LRtiff_compressionMethod = "compressionMethod_None"
         elseif p.HEICBitDepth > 8 then
           exportSettings.LR_format = 'TIFF'
           exportSettings.LR_export_bitDepth = 16

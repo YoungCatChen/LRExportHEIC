@@ -16,14 +16,15 @@ Here is roughly what happens:
   temporary location. According to the Lightroom SDK guide, now it becomes the
   plugin’s responsibility to place the final image in the originally requested
   location.
-  - The rendering that ExportHEIC requests will be either an 8-bit or a 16-bit
-    TIFF depending on the bit-depth selected in the HEIC settings panel.
- - ExportHEIC uses a helper executable to render the temporary TIFF file created
-   in the previous step into an HEIC file.
- - The HEIC file is placed at the originally requested location.
-   - This is why it has to have a .jpg extension. If the file had a .heic
-     extension instead, Lightroom would say that the export failed because it
-     couldn’t find the final rendered file.
+  - SDR export requests either an 8-bit or a 16-bit TIFF depending on the
+    bit-depth selected in the HEIC settings panel.
+  - HDR export requests a high-quality HDR AVIF rendition, because Lightroom's
+    TIFF post-process rendition is SDR even when HDR export is requested.
+ - ExportHEIC uses a helper executable to render the temporary file created
+   in the previous step into an HEIC file. For HDR export, the helper writes an
+   HEIC file with an ISO HDR gain map.
+ - The HEIC file is placed next to the originally requested location, using the
+   same base filename with a `.HEIC` extension.
 
 Note that the helper executable is hidden inside a wrapper app,
 `ConverterWrapper.app`. It provides no difference on functionality, but is

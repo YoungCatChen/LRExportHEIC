@@ -43,6 +43,9 @@ There are two main benefits of HEIC/HEIF:
   that panel will be overridden by any setting you choose in the
   “HEIC settings” panel.
 - Adjust the settings based on quality or file-size.
+- Optionally enable `Export HDR HEIC` for HDR photos. This asks Lightroom for a
+  32-bit float HDR TIFF rendition and writes an HEIC file with an ISO HDR gain
+  map.
 
 ![Example image quality settings](docs/by-quality.png)
 
@@ -50,10 +53,7 @@ There are two main benefits of HEIC/HEIF:
 
 - Click `Export`. Your export should proceed like normal, and you will find
   your files at the location you selected.
-- The files will have a `.jpg` extension. This is expected. You can rename
-  them to use a `.heic` extension or leave them with the `.jpg` extension.
-  Most applications won’t care about the extension, and will be able to use
-  the file like normal.
+- The files will have a `.HEIC` extension.
 
 The plugin also adds a new item under “Export To” named “Export HEIC”.
 This does nothing more than hide the original “File Settings” panel so
@@ -66,8 +66,9 @@ macOS only; okay on both Apple M1-M4 chips and Intel chips.
 
 Because the CLI component is using macOS APIs to create the HEIC/HEIF file,
 the only supported platform is macOS. Theoretically there should be nothing
-preventing it from working on earlier versions, but I have only personally
-tested it on macOS Monterey (v12+). It definitely won’t work on Windows.
+preventing SDR export from working on earlier versions, but I have only
+personally tested it on macOS Monterey (v12+). HDR HEIC export requires
+macOS 15 or newer. It definitely won’t work on Windows.
 
 I have tested the plugin to work with Lightroom Classic version v11 and newer.
 

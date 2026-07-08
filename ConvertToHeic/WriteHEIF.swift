@@ -1,4 +1,5 @@
 import CoreImage
+import ImageIO
 
 func writeHEIF(
   of image: CIImage,
@@ -6,19 +7,39 @@ func writeHEIF(
   in colorSpace: CGColorSpace,
   withQuality quality: Double,
   shouldUseHEIF10: Bool,
+  hdrImage: CIImage?,
   verbose: Bool
 ) throws {
-  let opts = [kCGImageDestinationLossyCompressionQuality: quality] as [CIImageRepresentationOption: Any]
+  var opts = [kCGImageDestinationLossyCompressionQuality: quality] as [CIImageRepresentationOption: Any]
   let ctx = CIContext()
+
+  try? FileManager.default.removeItem(at: url)
 
   if verbose {
     print("Output URL: \(url)")
     print("Output Quality: \(quality)")
     print("Output Colorspace: \(colorSpace)")
-    print("Output Bitdepth: \(shouldUseHEIF10 ? 10 : 8)")
+    print("Output Bitdepth: \(hdrImage == nil && shouldUseHEIF10 ? 10 : 8)")
+    print("Output HDR: \(hdrImage != nil)")
   }
 
-  if shouldUseHEIF10 {
+  if let hdrImage = hdrImage {
+    guard #available(macOS 15.0, *) else {
+      throw ExportHEICError.hdrOutputRequiresMacOS15
+    }
+
+    opts[.hdrImage] = hdrImage
+    opts[kCGImageDestinationEncodeRequest as CIImageRepresentationOption] =
+      kCGImageDestinationEncodeToISOHDR
+
+    try ctx.writeHEIFRepresentation(
+      of: image,
+      to: url,
+      format: .RGBA8,
+      colorSpace: colorSpace,
+      options: opts
+    )
+  } else if shouldUseHEIF10 {
     try ctx.writeHEIF10Representation(
       of: image,
       to: url,

@@ -7,10 +7,13 @@ enum ExportHEICError: Error, CustomStringConvertible {
     switch self {
     case .couldNotReadImage:
       return "Could not read image file"
+    case .hdrOutputRequiresMacOS15:
+      return "HDR HEIC output requires macOS 15 or newer"
     }
   }
 
   case couldNotReadImage
+  case hdrOutputRequiresMacOS15
 }
 
 struct ExportHEICCommand: Command {
@@ -66,6 +69,9 @@ struct ExportHEICCommand: Command {
     @Flag(name: "verbose", help: "Print the decision making process verbosely")
     var verbose: Bool
 
+    @Flag(name: "hdr-output", help: "Write HDR HEIC with a gain map. Requires macOS 15 or newer")
+    var hdrOutput: Bool
+
     var inputFileURL: URL! {
       guard let inputFile = self.inputFile else {
         fatalError("Missing inputFile")
@@ -97,41 +103,77 @@ struct ExportHEICCommand: Command {
     try signature.enhanceOptions()
     try signature.checkOptions()
 
-    let inputImage = CIImage(contentsOf: signature.inputFileURL)
+    let inputImage = Self.readInputImage(from: signature.inputFileURL, forHDROutput: signature.hdrOutput)
     guard let inputImage = inputImage else {
       throw ExportHEICError.couldNotReadImage
     }
+    let sdrBaseImage = Self.readSDRBaseImage(from: signature.inputFileURL, fallbackImage: inputImage)
 
     let bitDepth = inputImage.properties["Depth"] as? Int ?? 8
     let colorSpace =
-      signature.colorSpace ?? inputImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+      signature.hdrOutput
+      ? CGColorSpace(name: CGColorSpace.sRGB)!
+      : signature.colorSpace ?? inputImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
     let shouldUseHEIF10 = bitDepth > 8
 
     if signature.verbose {
       context.console.print("Input URL: \(signature.inputFileURL!)")
       context.console.print("Input Colorspace: \(inputImage.colorSpace!)")
       context.console.print("Input Bitdepth: \(bitDepth)")
+      context.console.print("HDR Output: \(signature.hdrOutput)")
     }
 
     if signature.quality != nil {
       try writeHEIF(
-        of: inputImage,
+        of: signature.hdrOutput ? sdrBaseImage : inputImage,
         to: signature.outputFileURL,
         in: colorSpace,
         withQuality: signature.quality!,
         shouldUseHEIF10: shouldUseHEIF10,
+        hdrImage: signature.hdrOutput ? inputImage : nil,
         verbose: signature.verbose)
     } else {
       try writeSizeLimitedHEIF(
-        of: inputImage,
+        of: signature.hdrOutput ? sdrBaseImage : inputImage,
         to: signature.outputFileURL,
         in: colorSpace,
         withSizeLimit: signature.sizeLimit!,
         withSizeLimitAccuracy: signature.sizeLimitAccuracy ?? 0.9,
         withinRange: (signature.minQuality ?? 0)...(signature.maxQuality ?? 1),
         shouldUseHEIF10: shouldUseHEIF10,
+        hdrImage: signature.hdrOutput ? inputImage : nil,
         verbose: signature.verbose)
     }
+  }
+
+  private static func readInputImage(from url: URL, forHDROutput hdrOutput: Bool) -> CIImage? {
+    guard hdrOutput else {
+      return CIImage(contentsOf: url)
+    }
+
+    if #available(macOS 14.0, *) {
+      return CIImage(
+        contentsOf: url,
+        options: [
+          .expandToHDR: true,
+          .toneMapHDRtoSDR: false,
+        ])
+    }
+
+    return CIImage(contentsOf: url)
+  }
+
+  private static func readSDRBaseImage(from url: URL, fallbackImage: CIImage) -> CIImage {
+    if #available(macOS 14.0, *) {
+      return CIImage(
+        contentsOf: url,
+        options: [
+          .expandToHDR: false,
+          .toneMapHDRtoSDR: true,
+        ]) ?? fallbackImage
+    }
+
+    return fallbackImage
   }
 }
 

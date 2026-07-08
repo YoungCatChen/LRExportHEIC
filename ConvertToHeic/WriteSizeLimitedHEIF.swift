@@ -8,6 +8,7 @@ func writeSizeLimitedHEIF(
   withSizeLimitAccuracy sizeAccuracy: Double,
   withinRange qualityRange: ClosedRange<Double>,
   shouldUseHEIF10: Bool,
+  hdrImage: CIImage?,
   verbose: Bool
 ) throws {
   let tempDirUrl = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -33,6 +34,7 @@ func writeSizeLimitedHEIF(
         in: colorSpace,
         withQuality: quality,
         shouldUseHEIF10: shouldUseHEIF10,
+        hdrImage: hdrImage,
         verbose: verbose)
       qualitiesAndURLs[quality] = destURL
       let resources = try destURL.resourceValues(forKeys: [.fileSizeKey])
@@ -76,6 +78,7 @@ func writeSizeLimitedHEIF(
       in: colorSpace,
       withQuality: quality,
       shouldUseHEIF10: shouldUseHEIF10,
+      hdrImage: hdrImage,
       verbose: verbose)
   }
 }

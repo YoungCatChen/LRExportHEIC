@@ -11,6 +11,13 @@ function formatPercentage(num, fromModel)
   return tostring(math.floor(num)) .. ' %'
 end
 
+function replaceFileExtension(path, extension)
+  local parent = LrPathUtils.parent(path)
+  local leaf = LrPathUtils.leafName(path)
+  local base = leaf:gsub('%.[^%.]*$', '')
+  return LrPathUtils.child(parent, base .. '.' .. extension)
+end
+
 return {
   exportPresetFields = {
     { key = 'HEICQuality', default = 75 },
@@ -20,6 +27,7 @@ return {
     { key = 'HEICMaxQuality', default = 90 },
     { key = 'HEICColorSpace', default = 'SRGB' },
     { key = 'HEICBitDepth', default = 10 },
+    { key = 'HEICUseHDR', default = false },
   },
   hideSections = { 'video', 'fileSettings' },
   -- sectionsForTopOfDialog = function( viewFactory, propertyTable )
@@ -73,9 +81,28 @@ return {
           f:row {  -- control 3: bit depth
             f:static_text { width_in_chars = 8, alignment = 'right', title = 'Bit Depth:' },
             f:spacer { width = 2 },
-            f:radio_button { value = bind 'HEICBitDepth', title = '8', checked_value = 8 },
-            f:radio_button { value = bind 'HEICBitDepth', title = '10', checked_value = 10 },
+            f:radio_button {
+              value = bind 'HEICBitDepth',
+              title = '8',
+              checked_value = 8,
+              enabled = negbind 'HEICUseHDR',
+            },
+            f:radio_button {
+              value = bind 'HEICBitDepth',
+              title = '10',
+              checked_value = 10,
+              enabled = negbind 'HEICUseHDR',
+            },
           },  -- control 3: bit depth
+
+          f:row {  -- control 4: hdr
+            f:static_text { width_in_chars = 8, alignment = 'right', title = 'HDR:' },
+            f:spacer { width = 2 },
+            f:checkbox {
+              value = bind 'HEICUseHDR',
+              title = 'Export HDR HEIC',
+            },
+          },  -- control 4: hdr
 
         },  -- left-column
 
@@ -129,19 +156,36 @@ return {
 
     local renditionOptions = {
       filterSettings = function( renditionToSatisfy, exportSettings )
-        exportSettings.LR_format = 'TIFF'
-        if p.HEICBitDepth > 8 then
+        if p.HEICUseHDR then
+          exportSettings.LR_format = 'TIFF'
+          exportSettings.LR_enableHDRDisplay = true
+          exportSettings.LR_export_enableHDRDisplay = true
+          exportSettings.LR_export_bitDepth = 32
+          exportSettings.LR_export_colorSpace = "sRGB_hdr"
+          exportSettings.LR_maximumCompatibility = false
+          exportSettings.LRtiff_compressionMethod = "compressionMethod_None"
+        elseif p.HEICBitDepth > 8 then
+          exportSettings.LR_format = 'TIFF'
           exportSettings.LR_export_bitDepth = 16
-        else
-          exportSettings.LR_export_bitDepth = 8
-        end
 
-        if p.HEICColorSpace == "SRGB" then
-          exportSettings.LR_export_colorSpace = "sRGB"
-        elseif p.HEICColorSpace == "AdobeRGB1998" then
-          exportSettings.LR_export_colorSpace = "AdobeRGB"
-        elseif p.HEICColorSpace == "DisplayP3" then
-          exportSettings.LR_export_colorSpace = "DisplayP3"
+          if p.HEICColorSpace == "SRGB" then
+            exportSettings.LR_export_colorSpace = "sRGB"
+          elseif p.HEICColorSpace == "AdobeRGB1998" then
+            exportSettings.LR_export_colorSpace = "AdobeRGB"
+          elseif p.HEICColorSpace == "DisplayP3" then
+            exportSettings.LR_export_colorSpace = "DisplayP3"
+          end
+        else
+          exportSettings.LR_format = 'TIFF'
+          exportSettings.LR_export_bitDepth = 8
+
+          if p.HEICColorSpace == "SRGB" then
+            exportSettings.LR_export_colorSpace = "sRGB"
+          elseif p.HEICColorSpace == "AdobeRGB1998" then
+            exportSettings.LR_export_colorSpace = "AdobeRGB"
+          elseif p.HEICColorSpace == "DisplayP3" then
+            exportSettings.LR_export_colorSpace = "DisplayP3"
+          end
         end
         return os.tmpname()
       end,
@@ -158,14 +202,20 @@ return {
     else
       cmd = cmd .. ' --quality ' .. (p.HEICQuality / 100)
     end
+    if p.HEICUseHDR then
+      cmd = cmd .. ' --hdr-output'
+    end
 
-    logger:info('Starting rendering of TIFF originals')
+    logger:info('Starting rendering of originals')
     for sourceRendition, renditionToSatisfy in  filterContext:renditions(renditionOptions) do
       logger:info('Processing rendition')
       local success, pathOrMessage = sourceRendition:waitForRender()
       if success then
+        local outputPath = replaceFileExtension(
+            renditionToSatisfy.destinationPath,
+            'HEIC')
         local actualCmd = (cmd .. ' --input-file "' .. pathOrMessage .. '" "'
-                           .. renditionToSatisfy.destinationPath .. '"')
+                           .. outputPath .. '"')
         local status = LrTasks.execute(actualCmd)
         logger:info('Command status: ' .. status)
         if status ~= 0 then

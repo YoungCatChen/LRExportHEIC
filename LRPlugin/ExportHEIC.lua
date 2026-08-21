@@ -65,6 +65,8 @@ return {
                 { title = 'sRGB', value = 'SRGB' },
                 { title = 'Display P3', value = 'DisplayP3' },
                 { title = 'AdobeRGB', value = 'AdobeRGB1998' },
+                { title = 'HDR P3', value = 'DisplayP3_HDR' },
+                { title = 'HDR Rec. 2020', value = 'Rec2020_HDR' },
               },
               value = bind 'HEICColorSpace'
             },
@@ -126,11 +128,16 @@ return {
   end,
   postProcessRenderedPhotos = function(functionContext, filterContext)
     local p = filterContext.propertyTable
+    local isHDR = p.HEICColorSpace == "DisplayP3_HDR" or p.HEICColorSpace == "Rec2020_HDR"
 
     local renditionOptions = {
       filterSettings = function( renditionToSatisfy, exportSettings )
         exportSettings.LR_format = 'TIFF'
-        if p.HEICBitDepth > 8 then
+        if isHDR then
+          exportSettings.LR_export_bitDepth = 16
+          exportSettings.LR_enableHDRDisplay = true
+          exportSettings.LR_maximumCompatibility = false
+        elseif p.HEICBitDepth > 8 then
           exportSettings.LR_export_bitDepth = 16
         else
           exportSettings.LR_export_bitDepth = 8
@@ -142,6 +149,13 @@ return {
           exportSettings.LR_export_colorSpace = "AdobeRGB"
         elseif p.HEICColorSpace == "DisplayP3" then
           exportSettings.LR_export_colorSpace = "DisplayP3"
+        elseif p.HEICColorSpace == "DisplayP3_HDR" then
+          exportSettings.LR_export_colorSpace = "DisplayP3_hdr"
+        elseif p.HEICColorSpace == "Rec2020_HDR" then
+          exportSettings.LR_export_colorSpace = "Rec2020_hdr"
+        end
+        if isHDR then
+          return os.tmpname() .. '.tif'
         end
         return os.tmpname()
       end,
@@ -164,6 +178,7 @@ return {
       logger:info('Processing rendition')
       local success, pathOrMessage = sourceRendition:waitForRender()
       if success then
+        LrTasks.execute('mkdir -p "' .. LrPathUtils.parent(renditionToSatisfy.destinationPath) .. '"')
         local actualCmd = (cmd .. ' --input-file "' .. pathOrMessage .. '" "'
                            .. renditionToSatisfy.destinationPath .. '"')
         local status = LrTasks.execute(actualCmd)

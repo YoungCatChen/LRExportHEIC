@@ -21,6 +21,10 @@ There are two main benefits of HEIC/HEIF:
 - 10-bit encoding support, allowing for a wider dynamic range and giving more
   latitude for further edits than the 8-bit JPEG.
 
+See [HDR and Gain Map Reference](docs/hdr_gain_map_reference.md) for the HDR
+representation, gain-map, color-management, and validation model used by this
+project.
+
 ## Installation
 
 - Download the ZIP file from the

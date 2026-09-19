@@ -47,9 +47,9 @@ project.
   that panel will be overridden by any setting you choose in the
   “HEIC settings” panel.
 - Adjust the settings based on quality or file-size.
-- Optionally enable `Export HDR HEIC` for HDR photos. This asks Lightroom for a
-  32-bit float HDR TIFF rendition and writes an HEIC file with an ISO HDR gain
-  map.
+- Optionally enable `Export HDR HEIC` for HDR photos. This asks Lightroom for
+  both its authored 16-bit SDR rendition and a separate 32-bit float HDR
+  rendition, then writes a 10-bit HEIC primary with an RGB ISO HDR gain map.
 
 ![Example image quality settings](docs/by-quality.png)
 

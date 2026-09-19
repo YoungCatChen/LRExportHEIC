@@ -18,11 +18,13 @@ Here is roughly what happens:
   location.
   - SDR export requests either an 8-bit or a 16-bit TIFF depending on the
     bit-depth selected in the HEIC settings panel.
-  - HDR export requests a 32-bit float TIFF rendition with Lightroom's HDR
-    output enabled and maximum compatibility disabled.
+  - HDR export requests two Lightroom-authored TIFF renditions: a 16-bit sRGB
+    rendition for the SDR primary and a separate 32-bit float HDR rendition.
  - ExportHEIC uses a helper executable to render the temporary file created
-   in the previous step into an HEIC file. For HDR export, the helper writes an
-   HEIC file with an ISO HDR gain map.
+   in the previous step into an HEIC file. For HDR export, the helper encodes
+   the SDR rendition as a 10-bit primary and combines it with the HDR rendition
+   using an RGB ISO HDR gain map; it does not synthesize the SDR primary by
+   tone-mapping the HDR rendition.
  - The HEIC file is placed next to the originally requested location, using the
    same base filename with a `.HEIC` extension.
 

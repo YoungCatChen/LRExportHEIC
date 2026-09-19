@@ -5,18 +5,34 @@ import Foundation
 enum ExportHEICError: Error, CustomStringConvertible {
   var description: String {
     switch self {
-    case .couldNotReadImage:
-      return "Could not read image file"
+    case .couldNotReadImage(let path):
+      return "Could not read image file: \(path)"
+    case .hdrOutputRequiresMacOS15:
+      return "HDR HEIC output requires macOS 15 or newer"
+    case .imageDimensionsDoNotMatch(let sdrSize, let hdrSize):
+      return "SDR and HDR image dimensions do not match: "
+        + "\(sdrSize.width)x\(sdrSize.height) vs "
+        + "\(hdrSize.width)x\(hdrSize.height)"
     }
   }
 
-  case couldNotReadImage
+  case couldNotReadImage(String)
+  case hdrOutputRequiresMacOS15
+  case imageDimensionsDoNotMatch(CGSize, CGSize)
 }
 
 struct ExportHEICCommand: Command {
   public struct ExportHEICCommandSignature: CommandSignature {
-    @Option(name: "input-file", help: "Path to input image file", required: true)
+    @Option(
+      name: "input-file",
+      help: "Path to input image file; the SDR primary with --hdr-output",
+      required: true)
     var inputFile: String!
+
+    @Option(
+      name: "hdr-input-file",
+      help: "Path to the Lightroom-rendered HDR image used with --hdr-output")
+    var hdrInputFile: String?
 
     @Option(
       name: "quality", help: "Compression quality. Cannot be used with --size-limit. Allowed range: 0.0 - 1.0",
@@ -66,6 +82,9 @@ struct ExportHEICCommand: Command {
     @Flag(name: "verbose", help: "Print the decision making process verbosely")
     var verbose: Bool
 
+    @Flag(name: "hdr-output", help: "Write HDR HEIC with a gain map. Requires macOS 15 or newer")
+    var hdrOutput: Bool
+
     var inputFileURL: URL! {
       guard let inputFile = self.inputFile else {
         fatalError("Missing inputFile")
@@ -76,6 +95,10 @@ struct ExportHEICCommand: Command {
 
     var outputFileURL: URL {
       return URL(fileURLWithPath: outputFile)
+    }
+
+    var hdrInputFileURL: URL? {
+      return hdrInputFile.map { URL(fileURLWithPath: $0) }
     }
 
     var colorSpace: CGColorSpace? {
@@ -97,20 +120,48 @@ struct ExportHEICCommand: Command {
     try signature.enhanceOptions()
     try signature.checkOptions()
 
-    let inputImage = CIImage(contentsOf: signature.inputFileURL)
-    guard let inputImage = inputImage else {
-      throw ExportHEICError.couldNotReadImage
+    guard let inputImage = CIImage(contentsOf: signature.inputFileURL) else {
+      throw ExportHEICError.couldNotReadImage(signature.inputFileURL.path)
+    }
+
+    let hdrImage: CIImage?
+    if let hdrInputFileURL = signature.hdrInputFileURL {
+      hdrImage = Self.readHDRImage(from: hdrInputFileURL)
+      guard hdrImage != nil else {
+        throw ExportHEICError.couldNotReadImage(hdrInputFileURL.path)
+      }
+    } else {
+      hdrImage = nil
+    }
+
+    if let hdrImage = hdrImage,
+      inputImage.extent.size != hdrImage.extent.size
+    {
+      throw ExportHEICError.imageDimensionsDoNotMatch(
+        inputImage.extent.size,
+        hdrImage.extent.size)
     }
 
     let bitDepth = inputImage.properties["Depth"] as? Int ?? 8
     let colorSpace =
-      signature.colorSpace ?? inputImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+      signature.hdrOutput
+      ? CGColorSpace(name: CGColorSpace.sRGB)!
+      : signature.colorSpace ?? inputImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
     let shouldUseHEIF10 = bitDepth > 8
 
     if signature.verbose {
       context.console.print("Input URL: \(signature.inputFileURL!)")
-      context.console.print("Input Colorspace: \(inputImage.colorSpace!)")
+      context.console.print(
+        "Input Colorspace: \(String(describing: inputImage.colorSpace))")
       context.console.print("Input Bitdepth: \(bitDepth)")
+      context.console.print("HDR Output: \(signature.hdrOutput)")
+      if let hdrInputFileURL = signature.hdrInputFileURL,
+        let hdrImage = hdrImage
+      {
+        context.console.print("HDR Input URL: \(hdrInputFileURL)")
+        context.console.print(
+          "HDR Input Colorspace: \(String(describing: hdrImage.colorSpace))")
+      }
     }
 
     if signature.quality != nil {
@@ -120,6 +171,7 @@ struct ExportHEICCommand: Command {
         in: colorSpace,
         withQuality: signature.quality!,
         shouldUseHEIF10: shouldUseHEIF10,
+        hdrImage: hdrImage,
         verbose: signature.verbose)
     } else {
       try writeSizeLimitedHEIF(
@@ -130,8 +182,22 @@ struct ExportHEICCommand: Command {
         withSizeLimitAccuracy: signature.sizeLimitAccuracy ?? 0.9,
         withinRange: (signature.minQuality ?? 0)...(signature.maxQuality ?? 1),
         shouldUseHEIF10: shouldUseHEIF10,
+        hdrImage: hdrImage,
         verbose: signature.verbose)
     }
+  }
+
+  private static func readHDRImage(from url: URL) -> CIImage? {
+    if #available(macOS 14.0, *) {
+      return CIImage(
+        contentsOf: url,
+        options: [
+          .expandToHDR: true,
+          .toneMapHDRtoSDR: false,
+        ])
+    }
+
+    return CIImage(contentsOf: url)
   }
 }
 
@@ -144,11 +210,17 @@ extension ExportHEICCommand.ExportHEICCommandSignature {
       case .missingEitherArgument(let labels):
         let flags = labels.map({ s in "--" + s }).joined(separator: ", ")
         return "One of \(flags) must be specified"
+      case .requiredArgument(let label, let requiringLabel):
+        return "`--\(label)` is required with `--\(requiringLabel)`"
+      case .argumentRequiresFlag(let label, let flagLabel):
+        return "`--\(label)` requires `--\(flagLabel)`"
       }
     }
 
     case coexistencyNotAllowed(_ label: String, _ anotherArgumentLabel: String)
     case missingEitherArgument(_ labels: [String])
+    case requiredArgument(_ label: String, _ requiringLabel: String)
+    case argumentRequiresFlag(_ label: String, _ flagLabel: String)
   }
 
   func checkOptions() throws {
@@ -158,6 +230,12 @@ extension ExportHEICCommand.ExportHEICCommandSignature {
       if maxQuality != nil { throw MyError.coexistencyNotAllowed("quality", "max-quality") }
     } else {
       if sizeLimit == nil { throw MyError.missingEitherArgument(["quality", "size-limit"]) }
+    }
+    if hdrOutput && hdrInputFile == nil {
+      throw MyError.requiredArgument("hdr-input-file", "hdr-output")
+    }
+    if !hdrOutput && hdrInputFile != nil {
+      throw MyError.argumentRequiresFlag("hdr-input-file", "hdr-output")
     }
   }
 }

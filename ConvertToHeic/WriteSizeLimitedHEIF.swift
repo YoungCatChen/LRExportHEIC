@@ -8,6 +8,7 @@ func writeSizeLimitedHEIF(
   withSizeLimitAccuracy sizeAccuracy: Double,
   withinRange qualityRange: ClosedRange<Double>,
   shouldUseHEIF10: Bool,
+  hdrImage: CIImage?,
   verbose: Bool
 ) throws {
   let tempDirUrl = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -33,6 +34,7 @@ func writeSizeLimitedHEIF(
         in: colorSpace,
         withQuality: quality,
         shouldUseHEIF10: shouldUseHEIF10,
+        hdrImage: hdrImage,
         verbose: verbose)
       qualitiesAndURLs[quality] = destURL
       let resources = try destURL.resourceValues(forKeys: [.fileSizeKey])
@@ -65,8 +67,7 @@ func writeSizeLimitedHEIF(
       print("Moving \(chosenUrl!) to \(destURL)")
     }
     // Move the right file from the temp directory to the final directory.
-    try? FileManager.default.removeItem(at: destURL)
-    try FileManager.default.moveItem(at: chosenUrl!, to: destURL)
+    try replaceItem(at: destURL, withItemAt: chosenUrl!)
 
   } else {
     // We have NOT generated an image with given quality. (qualitySearch may have returned early.)
@@ -76,6 +77,7 @@ func writeSizeLimitedHEIF(
       in: colorSpace,
       withQuality: quality,
       shouldUseHEIF10: shouldUseHEIF10,
+      hdrImage: hdrImage,
       verbose: verbose)
   }
 }

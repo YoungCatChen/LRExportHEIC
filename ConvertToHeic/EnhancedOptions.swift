@@ -74,8 +74,12 @@ public protocol HasContains {
   func contains(_: Element) -> Bool
 }
 
-extension Range: HasContains {}
-extension ClosedRange: HasContains {}
+extension Range: HasContains {
+  public typealias Element = Bound
+}
+extension ClosedRange: HasContains {
+  public typealias Element = Bound
+}
 extension Array: HasContains where Element: Equatable {}
 
 extension Option where Value: Equatable {

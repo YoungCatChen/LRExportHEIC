@@ -1,16 +1,34 @@
 ### DEBUG BUILD ###
 
-debug: build-debug/ExportHEIC.lrdevplugin
+debug: \
+		build-debug/ExportHEIC.lrdevplugin \
+		build-debug/hdr-image-tool
 
 clean-debug:
 	rm -rf ./build-debug ./.build
 
-.build/apple/Products/Debug/ConvertToHeic: $(wildcard ConvertToHeic/*)
-	swift build --configuration debug --arch x86_64 --arch arm64
+.build/debug/ConvertToHeic: \
+		Package.swift \
+		Package.resolved \
+		$(wildcard ConvertToHeic/*)
+	swift build --configuration debug --product ConvertToHeic
 	@test -x $@
 	@touch -c $@
 
-build-debug/ConvertToHeic: .build/apple/Products/Debug/ConvertToHeic
+.build/debug/hdr-image-tool: \
+		Package.swift \
+		Package.resolved \
+		$(wildcard Tools/HDRImageTool/*.swift) \
+		.build/debug/ConvertToHeic
+	swift build --configuration debug --product hdr-image-tool
+	@test -x $@
+	@touch -c $@
+
+build-debug/ConvertToHeic: .build/debug/ConvertToHeic
+	mkdir -p $(@D)
+	cd $(@D) && ln -s -f ../$< ./
+
+build-debug/hdr-image-tool: .build/debug/hdr-image-tool
 	mkdir -p $(@D)
 	cd $(@D) && ln -s -f ../$< ./
 

@@ -13,13 +13,6 @@ function formatPercentage(num, fromModel)
   return tostring(math.floor(num)) .. ' %'
 end
 
-function replaceFileExtension(path, extension)
-  local parent = LrPathUtils.parent(path)
-  local leaf = LrPathUtils.leafName(path)
-  local base = leaf:gsub('%.[^%.]*$', '')
-  return LrPathUtils.child(parent, base .. '.' .. extension)
-end
-
 local function flattenExportSettings(exportSettings)
   local result = {}
   local nested = exportSettings['< contents >']
@@ -185,36 +178,13 @@ local function shellQuote(value)
   return "'" .. tostring(value):gsub("'", "'\"'\"'") .. "'"
 end
 
-local function resolveOutputPath(path, exportSettings)
-  if not LrFileUtils.exists(path) then
-    return path, false
-  end
-
-  local settings = flattenExportSettings(exportSettings)
-  local collisionHandling = settings.LR_collisionHandling
-  if collisionHandling == 'overwrite' then
-    return path, false
-  end
-  if collisionHandling == 'skip' then
-    return nil, true
-  end
-  return LrFileUtils.chooseUniqueFileName(path), false
-end
-
 local function encodeRendition(
     command,
     propertyTable,
     baseExportSettings,
     sourceRendition,
     sdrPath,
-    requestedOutputPath)
-  local outputPath, skipped = resolveOutputPath(
-      requestedOutputPath,
-      propertyTable)
-  if skipped then
-    return true, 'Skipped existing file: ' .. requestedOutputPath
-  end
-
+    outputPath)
   local hdrPath = nil
   local temporaryDirectory = nil
   local renderError = nil
@@ -449,16 +419,13 @@ return {
       logger:info('Processing rendition')
       local success, pathOrMessage = sourceRendition:waitForRender()
       if success then
-        local requestedOutputPath = replaceFileExtension(
-            renditionToSatisfy.destinationPath,
-            'HEIC')
         local encoded, message = encodeRendition(
             cmd,
             p,
             baseExportSettings,
             sourceRendition,
             pathOrMessage,
-            requestedOutputPath)
+            renditionToSatisfy.destinationPath)
         if not encoded then
           logger:error(message)
           renditionToSatisfy:renditionIsDone(false, message)

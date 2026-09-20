@@ -57,7 +57,9 @@ project.
 
 - Click `Export`. Your export should proceed like normal, and you will find
   your files at the location you selected.
-- The files will have a `.HEIC` extension.
+- The files contain HEIF/HEIC data, but retain the filename extension assigned
+  by Lightroom (normally `.jpg`). This is required for the export filter to
+  fulfill Lightroom's requested destination path correctly.
 
 The plugin also adds a new item under “Export To” named “Export HEIC”.
 This does nothing more than hide the original “File Settings” panel so

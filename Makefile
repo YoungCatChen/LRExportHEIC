@@ -10,7 +10,8 @@ clean-debug:
 .build/debug/ConvertToHeic: \
 		Package.swift \
 		Package.resolved \
-		$(wildcard ConvertToHeic/*)
+		$(wildcard ConvertToHeic/*) \
+		$(wildcard HEIFEncoding/*)
 	swift build --configuration debug --product ConvertToHeic
 	@test -x $@
 	@touch -c $@
@@ -19,6 +20,7 @@ clean-debug:
 		Package.swift \
 		Package.resolved \
 		$(wildcard Tools/HDRImageTool/*.swift) \
+		$(wildcard HEIFEncoding/*) \
 		.build/debug/ConvertToHeic
 	swift build --configuration debug --product hdr-image-tool
 	@test -x $@
@@ -49,6 +51,7 @@ clean-release:
 
 build-release/ConverterWrapper.xcarchive: \
 		$(wildcard ConvertToHeic/*) \
+		$(wildcard HEIFEncoding/*) \
 		$(shell find ConverterWrapper -type f) \
 		$(shell find ConverterWrapper.xcodeproj -type f -not -path '*/xcuserdata/*')
 	@if test -z "$$TEAM_ID"; then  \

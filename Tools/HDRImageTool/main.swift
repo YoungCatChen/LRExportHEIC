@@ -1,6 +1,7 @@
 import CoreGraphics
 import CoreImage
 import Foundation
+import HEIFEncoding
 import ImageIO
 
 private enum ToolError: Error, CustomStringConvertible {
@@ -288,6 +289,7 @@ private final class HDRImageAnalyzer {
     hdrPath: String,
     outputPath: String,
     rgbGainMap: Bool,
+    outputBitDepth: HEIFBitDepth,
     quality: Double,
     force: Bool
   ) throws {
@@ -309,29 +311,25 @@ private final class HDRImageAnalyzer {
       throw ToolError.incompatibleImages(
         "HDR input does not expose an HDR rendition")
     }
-    try requireMatchingGeometry(sdr, hdr)
-
     let outputURL = expandedURL(outputPath)
     try refuseOverwrite(outputURL, force: force)
-    var options: [CIImageRepresentationOption: Any] = [
-      kCGImageDestinationLossyCompressionQuality
-        as CIImageRepresentationOption: quality,
-      .hdrImage: hdr,
-      .hdrGainMapAsRGB: rgbGainMap,
-    ]
-    options[kCGImageDestinationEncodeRequest as CIImageRepresentationOption] =
-      kCGImageDestinationEncodeToISOGainmap
-
     do {
-      try context.writeHEIFRepresentation(
-        of: sdr,
+      try writeHEIF(
+        HEIFEncodingRequest(
+          primary: PrimaryRendition(
+            image: sdr,
+            outputBitDepth: outputBitDepth,
+            outputColorSpace: sRGB),
+          dynamicRange: .adaptiveHDR(
+            alternate: HDRRendition(image: hdr),
+            gainMap: GainMapOptions(
+              channels: rgbGainMap ? .rgb : .monochrome))),
         to: outputURL,
-        format: .RGBA8,
-        colorSpace: sRGB,
-        options: options)
+        quality: quality,
+        verbose: false)
     } catch {
       throw ToolError.cannotWriteImage(
-        "Could not write HEIC: \(error.localizedDescription)")
+        "Could not write HEIC: \(error)")
     }
 
     let output = try load(outputURL.path)
@@ -722,7 +720,7 @@ private func usage() -> String {
     hdr-image-tool inspect [--json] IMAGE
     hdr-image-tool extract [--force] --output-dir DIR IMAGE
     hdr-image-tool compare [--json] [--rendition auto|sdr|hdr|both] IMAGE_A IMAGE_B
-    hdr-image-tool encode-heic [--force] --sdr IMAGE --hdr IMAGE --output FILE [--gain-map mono|rgb] [--quality 0.0...1.0]
+    hdr-image-tool encode-heic [--force] --sdr IMAGE --hdr IMAGE --output FILE [--gain-map mono|rgb] [--output-bit-depth 8|10] [--quality 0.0...1.0]
     hdr-image-tool verify-heic [--json] --sdr-reference IMAGE --hdr-reference IMAGE OUTPUT
 
   Comparisons never resize, crop, or implicitly tone-map an image.
@@ -802,7 +800,9 @@ private func run() throws {
   case "encode-heic":
     let parsed = try parseArguments(
       arguments,
-      valueOptions: ["sdr", "hdr", "output", "gain-map", "quality"],
+      valueOptions: [
+        "sdr", "hdr", "output", "gain-map", "output-bit-depth", "quality",
+      ],
       allowedFlags: ["force"])
     guard parsed.positionals.isEmpty,
       let sdr = parsed.options["sdr"],
@@ -820,11 +820,19 @@ private func run() throws {
     guard let quality = Double(qualityText) else {
       throw ToolError.invalidArguments("Invalid quality: \(qualityText)")
     }
+    let bitDepthText = parsed.options["output-bit-depth"] ?? "8"
+    guard let bitDepthValue = Int(bitDepthText),
+      let outputBitDepth = HEIFBitDepth(rawValue: bitDepthValue)
+    else {
+      throw ToolError.invalidArguments(
+        "Output bit depth must be 8 or 10")
+    }
     try analyzer.encodeHEIC(
       sdrPath: sdr,
       hdrPath: hdr,
       outputPath: output,
       rgbGainMap: gainMap == "rgb",
+      outputBitDepth: outputBitDepth,
       quality: quality,
       force: parsed.flags.contains("force"))
     print("Wrote adaptive HDR HEIC: \(expandedURL(output).path)")

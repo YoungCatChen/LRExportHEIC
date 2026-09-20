@@ -1,43 +1,44 @@
-import CoreImage
+import Foundation
+
+#if SWIFT_PACKAGE
+  import HEIFEncoding
+#endif
 
 func writeSizeLimitedHEIF(
-  of image: CIImage,
-  to destURL: URL,
-  in colorSpace: CGColorSpace,
+  _ request: HEIFEncodingRequest,
+  to destinationURL: URL,
   withSizeLimit size: Int64,
   withSizeLimitAccuracy sizeAccuracy: Double,
   withinRange qualityRange: ClosedRange<Double>,
-  shouldUseHEIF10: Bool,
-  hdrImage: CIImage?,
   verbose: Bool
 ) throws {
-  let tempDirUrl = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+  let temporaryDirectoryURL = URL(
+    fileURLWithPath: NSTemporaryDirectory(),
+    isDirectory: true)
 
-  // Prefix the temp file's name with a random string to avoid potential conflicts, when we are
-  // running on multiple processes.
-  let tempBaseName = NSUUID().uuidString + "-" + destURL.deletingPathExtension().lastPathComponent
+  // Prefix the temporary filename to avoid conflicts between processes.
+  let temporaryBaseName =
+    UUID().uuidString + "-"
+    + destinationURL.deletingPathExtension().lastPathComponent
 
-  // A dict from qualities to URLs. Set up cleanup (temp file removal).
-  var qualitiesAndURLs = [Double: URL]()
+  var candidateURLsByQuality = [Double: URL]()
   defer {
-    for (_, url) in qualitiesAndURLs {
+    for url in candidateURLsByQuality.values {
       try? FileManager.default.removeItem(at: url)
     }
   }
 
   func writeTempHEIFAndGetSize(_ quality: Double) -> Int64 {
-    let destURL = tempDirUrl.appendingPathComponent("\(tempBaseName)-\(quality).heif")
+    let candidateURL = temporaryDirectoryURL.appendingPathComponent(
+      "\(temporaryBaseName)-\(quality).heif")
     do {
       try writeHEIF(
-        of: image,
-        to: destURL,
-        in: colorSpace,
-        withQuality: quality,
-        shouldUseHEIF10: shouldUseHEIF10,
-        hdrImage: hdrImage,
+        request,
+        to: candidateURL,
+        quality: quality,
         verbose: verbose)
-      qualitiesAndURLs[quality] = destURL
-      let resources = try destURL.resourceValues(forKeys: [.fileSizeKey])
+      candidateURLsByQuality[quality] = candidateURL
+      let resources = try candidateURL.resourceValues(forKeys: [.fileSizeKey])
       let fileSize = resources.fileSize!
       if verbose {
         print("Output File Size: \(fileSize)")
@@ -59,25 +60,36 @@ func writeSizeLimitedHEIF(
     print("Chosen Output Quality: \(quality)")
   }
 
-  let chosenUrl = qualitiesAndURLs[quality]
+  let chosenURL = candidateURLsByQuality[quality]
 
-  if (chosenUrl != nil) {
+  if let chosenURL {
     // We have generated an image with given quality.
     if verbose {
-      print("Moving \(chosenUrl!) to \(destURL)")
+      print("Moving \(chosenURL) to \(destinationURL)")
     }
     // Move the right file from the temp directory to the final directory.
-    try replaceItem(at: destURL, withItemAt: chosenUrl!)
+    try replaceItem(at: destinationURL, withItemAt: chosenURL)
 
   } else {
     // We have NOT generated an image with given quality. (qualitySearch may have returned early.)
     try writeHEIF(
-      of: image,
-      to: destURL,
-      in: colorSpace,
-      withQuality: quality,
-      shouldUseHEIF10: shouldUseHEIF10,
-      hdrImage: hdrImage,
+      request,
+      to: destinationURL,
+      quality: quality,
       verbose: verbose)
+  }
+}
+
+private func replaceItem(
+  at destinationURL: URL,
+  withItemAt sourceURL: URL
+) throws {
+  let fileManager = FileManager.default
+  if fileManager.fileExists(atPath: destinationURL.path) {
+    _ = try fileManager.replaceItemAt(
+      destinationURL,
+      withItemAt: sourceURL)
+  } else {
+    try fileManager.moveItem(at: sourceURL, to: destinationURL)
   }
 }

@@ -57,6 +57,7 @@ build-debug/hdr-image-tool encode-heic \
   --sdr sdr.tif \
   --hdr hdr.tif \
   --gain-map rgb \
+  --output-bit-depth 10 \
   --quality 0.9 \
   --output output.heic
 

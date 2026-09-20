@@ -2,23 +2,19 @@ import ConsoleKit
 import CoreImage
 import Foundation
 
+#if SWIFT_PACKAGE
+  import HEIFEncoding
+#endif
+
 enum ExportHEICError: Error, CustomStringConvertible {
   var description: String {
     switch self {
     case .couldNotReadImage(let path):
       return "Could not read image file: \(path)"
-    case .hdrOutputRequiresMacOS15:
-      return "HDR HEIC output requires macOS 15 or newer"
-    case .imageDimensionsDoNotMatch(let sdrSize, let hdrSize):
-      return "SDR and HDR image dimensions do not match: "
-        + "\(sdrSize.width)x\(sdrSize.height) vs "
-        + "\(hdrSize.width)x\(hdrSize.height)"
     }
   }
 
   case couldNotReadImage(String)
-  case hdrOutputRequiresMacOS15
-  case imageDimensionsDoNotMatch(CGSize, CGSize)
 }
 
 struct ExportHEICCommand: Command {
@@ -67,14 +63,20 @@ struct ExportHEICCommand: Command {
     var maxQuality: Double?
 
     @Option(
-      name: "color-space",
+      name: "output-color-space",
       help: "Name of the output color space. Omit to use input image color space",
       allowedValues: [
         CGColorSpace.sRGB,
         CGColorSpace.displayP3,
         CGColorSpace.adobeRGB1998,
       ].map { ($0 as String).replacingOccurrences(of: "kCGColorSpace", with: "") })
-    var colorSpaceName: String?
+    var outputColorSpaceName: String?
+
+    @Option(
+      name: "output-bit-depth",
+      help: "HEIF primary image bit depth. Omit to infer from the input image",
+      allowedValues: [8, 10])
+    var outputBitDepthValue: Int?
 
     @Argument(name: "output-file", help: "Path to where the output file will be placed")
     var outputFile: String
@@ -84,6 +86,12 @@ struct ExportHEICCommand: Command {
 
     @Flag(name: "hdr-output", help: "Write HDR HEIC with a gain map. Requires macOS 15 or newer")
     var hdrOutput: Bool
+
+    @Option(
+      name: "gain-map-channels",
+      help: "HDR gain map channels. Default: rgb",
+      allowedValues: ["mono", "rgb"])
+    var gainMapChannelsName: String?
 
     var inputFileURL: URL! {
       guard let inputFile = self.inputFile else {
@@ -101,12 +109,17 @@ struct ExportHEICCommand: Command {
       return hdrInputFile.map { URL(fileURLWithPath: $0) }
     }
 
-    var colorSpace: CGColorSpace? {
-      guard let colorSpaceName = self.colorSpaceName else {
+    var outputColorSpace: CGColorSpace? {
+      guard let outputColorSpaceName = self.outputColorSpaceName else {
         return nil
       }
 
-      return CGColorSpace(name: "kCGColorSpace\(colorSpaceName)" as CFString)
+      return CGColorSpace(
+        name: "kCGColorSpace\(outputColorSpaceName)" as CFString)
+    }
+
+    var gainMapChannels: GainMapChannels {
+      return gainMapChannelsName == "mono" ? .monochrome : .rgb
     }
 
     public init() {}
@@ -134,55 +147,57 @@ struct ExportHEICCommand: Command {
       hdrImage = nil
     }
 
-    if let hdrImage = hdrImage,
-      inputImage.extent.size != hdrImage.extent.size
-    {
-      throw ExportHEICError.imageDimensionsDoNotMatch(
-        inputImage.extent.size,
-        hdrImage.extent.size)
+    let sourceBitDepth = inputImage.properties["Depth"] as? Int ?? 8
+    let outputBitDepth = HEIFBitDepth(
+      rawValue: signature.outputBitDepthValue
+        ?? (sourceBitDepth > 8 ? 10 : 8))!
+    let outputColorSpace =
+      signature.outputColorSpace
+      ?? inputImage.colorSpace
+      ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    let dynamicRange: DynamicRangeRepresentation
+    if let hdrImage {
+      dynamicRange = .adaptiveHDR(
+        alternate: HDRRendition(image: hdrImage),
+        gainMap: GainMapOptions(channels: signature.gainMapChannels))
+    } else {
+      dynamicRange = .sdr
     }
-
-    let bitDepth = inputImage.properties["Depth"] as? Int ?? 8
-    let colorSpace =
-      signature.hdrOutput
-      ? CGColorSpace(name: CGColorSpace.sRGB)!
-      : signature.colorSpace ?? inputImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
-    let shouldUseHEIF10 = bitDepth > 8
+    let encodingRequest = HEIFEncodingRequest(
+      primary: PrimaryRendition(
+        image: inputImage,
+        outputBitDepth: outputBitDepth,
+        outputColorSpace: outputColorSpace),
+      dynamicRange: dynamicRange)
 
     if signature.verbose {
       context.console.print("Input URL: \(signature.inputFileURL!)")
       context.console.print(
-        "Input Colorspace: \(String(describing: inputImage.colorSpace))")
-      context.console.print("Input Bitdepth: \(bitDepth)")
-      context.console.print("HDR Output: \(signature.hdrOutput)")
+        "Input color space: \(String(describing: inputImage.colorSpace))")
+      context.console.print("Input bit depth: \(sourceBitDepth)")
+      context.console.print("HDR output: \(signature.hdrOutput)")
       if let hdrInputFileURL = signature.hdrInputFileURL,
         let hdrImage = hdrImage
       {
         context.console.print("HDR Input URL: \(hdrInputFileURL)")
         context.console.print(
-          "HDR Input Colorspace: \(String(describing: hdrImage.colorSpace))")
+          "HDR input color space: \(String(describing: hdrImage.colorSpace))")
       }
     }
 
     if signature.quality != nil {
       try writeHEIF(
-        of: inputImage,
+        encodingRequest,
         to: signature.outputFileURL,
-        in: colorSpace,
-        withQuality: signature.quality!,
-        shouldUseHEIF10: shouldUseHEIF10,
-        hdrImage: hdrImage,
+        quality: signature.quality!,
         verbose: signature.verbose)
     } else {
       try writeSizeLimitedHEIF(
-        of: inputImage,
+        encodingRequest,
         to: signature.outputFileURL,
-        in: colorSpace,
         withSizeLimit: signature.sizeLimit!,
         withSizeLimitAccuracy: signature.sizeLimitAccuracy ?? 0.9,
         withinRange: (signature.minQuality ?? 0)...(signature.maxQuality ?? 1),
-        shouldUseHEIF10: shouldUseHEIF10,
-        hdrImage: hdrImage,
         verbose: signature.verbose)
     }
   }
@@ -236,6 +251,9 @@ extension ExportHEICCommand.ExportHEICCommandSignature {
     }
     if !hdrOutput && hdrInputFile != nil {
       throw MyError.argumentRequiresFlag("hdr-input-file", "hdr-output")
+    }
+    if !hdrOutput && gainMapChannelsName != nil {
+      throw MyError.argumentRequiresFlag("gain-map-channels", "hdr-output")
     }
   }
 }

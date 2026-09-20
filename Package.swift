@@ -17,17 +17,23 @@ let package = Package(
     .executableTarget(
       name: "ConvertToHeic",
       dependencies: [
+        "HEIFEncoding",
         .product(name: "ConsoleKit", package: "console-kit")
       ],
       path: "ConvertToHeic"
     ),
     .executableTarget(
       name: "HDRImageTool",
+      dependencies: ["HEIFEncoding"],
       path: "Tools/HDRImageTool"
+    ),
+    .target(
+      name: "HEIFEncoding",
+      path: "HEIFEncoding"
     ),
     .testTarget(
       name: "ConvertToHeicTests",
-      dependencies: ["ConvertToHeic"],
+      dependencies: ["ConvertToHeic", "HEIFEncoding"],
       path: "ConvertToHeicTests"
     ),
   ]

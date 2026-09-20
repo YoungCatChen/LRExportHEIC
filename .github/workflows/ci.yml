@@ -28,6 +28,9 @@ jobs:
       - name: Run "make debug"
         run: make debug
 
+      - name: Run Swift tests
+        run: swift test
+
   make-release-build:
     runs-on: macos-latest
     steps:

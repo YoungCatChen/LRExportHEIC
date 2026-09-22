@@ -4,6 +4,7 @@ import ImageIO
 import XCTest
 
 #if SWIFT_PACKAGE
+  import ConsoleKit
   @testable import ConvertToHeic
   import HEIFEncoding
 #endif
@@ -26,6 +27,28 @@ final class LRExportHEICTests: XCTestCase {
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
   }
+
+  #if SWIFT_PACKAGE
+    func testParsesGainMapChannelsBeforeOutputFile() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "--hdr-output",
+        "--gain-map-channels", "rgb",
+        "--output-bit-depth", "8",
+        "--output-color-space", "DisplayP3",
+        "--input-file", "primary.tif",
+        "--hdr-input-file", "hdr.tif",
+        "output.heic",
+      ])
+
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+
+      XCTAssertEqual(signature.gainMapChannelsName, "rgb")
+      XCTAssertEqual(signature.outputFile, "output.heic")
+    }
+  #endif
 
   func testWritesEightBitHEIF() throws {
     let outputURL = temporaryDirectory.appendingPathComponent("sdr-8.heic")

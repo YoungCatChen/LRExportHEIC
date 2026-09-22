@@ -49,7 +49,12 @@ project.
 - Adjust the settings based on quality or file-size.
 - Optionally enable `Export HDR HEIC` for HDR photos. This asks Lightroom for
   both its authored 16-bit SDR rendition and a separate 32-bit float HDR
-  rendition, then writes a 10-bit HEIC primary with an RGB ISO HDR gain map.
+  rendition, then writes an 8-bit or 10-bit HEIC primary with an RGB ISO HDR
+  gain map. sRGB, Display P3, and Rec. 2020 are available in HDR mode. Adobe
+  RGB remains available for SDR export.
+- Enable `Keep intermediate TIFFs` to preserve Lightroom's rendered inputs as
+  `<filename>.intermediate.tif` and, for HDR exports,
+  `<filename>.intermediate-alternate-hdr.tif` beside the output file.
 
 ![Example image quality settings](docs/by-quality.png)
 

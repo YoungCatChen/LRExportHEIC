@@ -69,6 +69,8 @@ struct ExportHEICCommand: Command {
         CGColorSpace.sRGB,
         CGColorSpace.displayP3,
         CGColorSpace.adobeRGB1998,
+        CGColorSpace.itur_2020,
+        CGColorSpace.rommrgb,
       ].map { ($0 as String).replacingOccurrences(of: "kCGColorSpace", with: "") })
     var outputColorSpaceName: String?
 
@@ -77,9 +79,6 @@ struct ExportHEICCommand: Command {
       help: "HEIF primary image bit depth. Omit to infer from the input image",
       allowedValues: [8, 10])
     var outputBitDepthValue: Int?
-
-    @Argument(name: "output-file", help: "Path to where the output file will be placed")
-    var outputFile: String
 
     @Flag(name: "verbose", help: "Print the decision making process verbosely")
     var verbose: Bool
@@ -92,6 +91,9 @@ struct ExportHEICCommand: Command {
       help: "HDR gain map channels. Default: rgb",
       allowedValues: ["mono", "rgb"])
     var gainMapChannelsName: String?
+
+    @Argument(name: "output-file", help: "Path to where the output file will be placed")
+    var outputFile: String
 
     var inputFileURL: URL! {
       guard let inputFile = self.inputFile else {

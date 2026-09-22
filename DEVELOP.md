@@ -12,19 +12,22 @@ Here is roughly what happens:
 - Lightroom renders the image according to the user’s settings.
 - This plugin (ExportHEIC) starts executing and is provided with a list of
   images and their export settings.
-- ExportHEIC requests a different version of the image to be rendered into a
-  temporary location. According to the Lightroom SDK guide, now it becomes the
-  plugin’s responsibility to place the final image in the originally requested
-  location.
-  - SDR export requests either an 8-bit or a 16-bit TIFF depending on the
-    bit-depth selected in the HEIC settings panel.
-  - HDR export requests two Lightroom-authored TIFF renditions: a 16-bit sRGB
-    rendition for the SDR primary and a separate 32-bit float HDR rendition.
-- ExportHEIC uses a helper executable to render the temporary file created
-  in the previous step into an HEIC file. For HDR export, the helper encodes
-  the SDR rendition as a 10-bit primary and combines it with the HDR rendition
-  using an RGB ISO HDR gain map; it does not synthesize the SDR primary by
-  tone-mapping the HDR rendition.
+- ExportHEIC creates a per-rendition working directory and asks Lightroom to
+  render the encoder inputs into it. According to the Lightroom SDK guide, the
+  plugin then becomes responsible for placing the final image in the originally
+  requested location and cleaning up the working directory.
+  - SDR export requests a 16-bit TIFF in the selected output gamut, independent
+    of the requested HEIF bit depth.
+  - HDR export requests two Lightroom-authored TIFF renditions in corresponding
+    SDR and HDR color spaces: a 16-bit SDR primary and a separate 32-bit float
+    HDR rendition. The known pairs are `sRGB`/`sRGB_hdr`,
+    `DisplayP3`/`p3_hdr`, and `Rec2020`/`Rec2020_hdr`. These are the same three
+    HDR spaces exposed by Lightroom's built-in export UI.
+- ExportHEIC uses a helper executable to encode the intermediate rendition or
+  renditions as an HEIC file. For HDR export, the helper encodes
+  the SDR rendition at the selected 8-bit or 10-bit primary depth and combines
+  it with the HDR rendition using an RGB ISO HDR gain map; it does not
+  synthesize the SDR primary by tone-mapping the HDR rendition.
 - The encoded HEIF file is written to the exact destination path supplied by
   Lightroom. Its filename therefore normally retains a `.jpg` extension even
   though the file contents are HEIF; changing the path would leave Lightroom's

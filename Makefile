@@ -131,7 +131,28 @@ release: build-release/ExportHEIC.lrplugin.zip
 
 ### MISC
 
+LUA_FILES := $(shell git ls-files --cached --others --exclude-standard \
+	-- '*.lua' '*.lua.template' | sort)
+SWIFT_FILES := $(shell git ls-files --cached --others --exclude-standard \
+	-- '*.swift' | sort)
+SHELL_FILES := $(shell git ls-files --cached --others --exclude-standard \
+	-- '*.sh' | sort)
+
+lint:
+	stylua --check --verify $(LUA_FILES)
+	luac -p $(LUA_FILES)
+	swift format lint --strict $(SWIFT_FILES)
+	bash -n $(SHELL_FILES)
+	git diff --check
+
+fmt:
+	stylua --verify $(LUA_FILES)
+	swift format format --in-place $(SWIFT_FILES)
+
+test:
+	swift test
+
 clean: clean-debug clean-release
 
-.PHONY: debug release release-build release-notarize \
+.PHONY: debug fmt lint test release release-build release-notarize \
 	clean clean-debug clean-release

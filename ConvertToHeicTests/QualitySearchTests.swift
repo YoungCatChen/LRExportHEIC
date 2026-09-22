@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 
 #if !XCODE
-@testable import func ConvertToHeic.qualitySearch
+  @testable import func ConvertToHeic.qualitySearch
 #endif
 
 final class QualitySearchTests: XCTestCase {

@@ -3,6 +3,7 @@
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 /build-debug
 /build-release
+/luac.out
 
 # Xcode
 # from https://github.com/github/gitignore/blob/main/Swift.gitignore

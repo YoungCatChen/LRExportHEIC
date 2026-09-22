@@ -50,6 +50,19 @@ Branch `upstream-main` keeps track of the origin’s `main` branch.
 
 Simply run `make debug`.
 
+Install the development lint dependencies and run the checks with:
+
+```sh
+brew install lua stylua
+make fmt
+make lint
+make test
+```
+
+`make fmt` formats the Lua and Swift sources. `make lint` checks Lua 5.1
+syntax and formatting, Swift formatting, shell syntax, and whitespace.
+`make test` runs the Swift test suite.
+
 A quick build using `swift build` will start to build the swift files
 under the `ConvertToHeic` directory, and a plugin with `.lrdevplugin`
 will be generated under the `build-debug/` directory.

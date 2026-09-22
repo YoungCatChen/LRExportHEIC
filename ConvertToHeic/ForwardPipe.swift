@@ -3,7 +3,7 @@ precedencegroup SingleFowardPipe {
   higherThan: BitwiseShiftPrecedence
 }
 
-infix operator |>: SingleFowardPipe
+infix operator |> : SingleFowardPipe
 
 func |> <V, R>(value: V, function: ((V) -> R)) -> R {
   function(value)

@@ -18,7 +18,7 @@ let package = Package(
       name: "ConvertToHeic",
       dependencies: [
         "HEIFEncoding",
-        .product(name: "ConsoleKit", package: "console-kit")
+        .product(name: "ConsoleKit", package: "console-kit"),
       ],
       path: "ConvertToHeic"
     ),

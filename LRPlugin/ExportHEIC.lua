@@ -57,13 +57,6 @@ local HDR_COLOR_SPACE_ITEMS = {
 
 local dialogObserver = {}
 
----@param num number
----@param fromModel boolean?
----@return string
-local function formatPercentage(num, fromModel)
-  return tostring(math.floor(num)) .. ' %'
-end
-
 ---@param value string
 ---@return ColorSpaceSpec
 local function colorSpaceFor(value)
@@ -79,12 +72,42 @@ local function colorSpaceItems(useHDR)
   return SDR_COLOR_SPACE_ITEMS
 end
 
+---@param observer table
 ---@param propertyTable table<string, any>
-local function constrainHDRColorSpace(propertyTable)
+local function constrainHDRColorSpace(observer, propertyTable)
   local colorSpace = COLOR_SPACES[propertyTable.HEICColorSpace]
   if not colorSpace or propertyTable.HEICUseHDR and not colorSpace.hdr then
     propertyTable.HEICColorSpace = 'SRGB'
   end
+end
+
+---@param observer table
+---@param propertyTable table<string, any>
+local function constrainMinimumQuality(observer, propertyTable)
+  local minimum = tonumber(propertyTable.HEICMinQuality)
+  local maximum = tonumber(propertyTable.HEICMaxQuality)
+  if minimum and maximum and minimum > maximum then
+    propertyTable.HEICMaxQuality = minimum
+  end
+end
+
+---@param observer table
+---@param propertyTable table<string, any>
+local function constrainMaximumQuality(observer, propertyTable)
+  local minimum = tonumber(propertyTable.HEICMinQuality)
+  local maximum = tonumber(propertyTable.HEICMaxQuality)
+  if minimum and maximum and maximum < minimum then
+    propertyTable.HEICMinQuality = maximum
+  end
+end
+
+---@param hdrMode string
+---@return string
+local function gainMapResolutionTitle(hdrMode)
+  if hdrMode == 'hdrAndInverseGain' then
+    return 'Recovery Map Resolution:'
+  end
+  return 'Gain Map Resolution:'
 end
 
 ---@param exportSettings table<string, any>
@@ -447,7 +470,7 @@ end
 
 ---@class ExportOptions
 ---@field useHDR boolean
----@field keepIntermediateTIFFs boolean
+---@field keepIntermediates boolean
 
 ---@class RenditionJob
 ---@field command string
@@ -504,7 +527,7 @@ local function processRendition(job)
     message = 'Rendition processing failed: ' .. tostring(resultOrError)
   end
 
-  if job.options.keepIntermediateTIFFs and job.primaryPath then
+  if job.options.keepIntermediates and job.primaryPath then
     local preserveCallSucceeded, pathsOrError = LrTasks.pcall(
       preserveEncoderInputs,
       job.primaryPath,
@@ -547,7 +570,18 @@ local function startDialog(propertyTable)
     dialogObserver,
     constrainHDRColorSpace
   )
-  constrainHDRColorSpace(propertyTable)
+  propertyTable:addObserver(
+    'HEICMinQuality',
+    dialogObserver,
+    constrainMinimumQuality
+  )
+  propertyTable:addObserver(
+    'HEICMaxQuality',
+    dialogObserver,
+    constrainMaximumQuality
+  )
+  constrainHDRColorSpace(dialogObserver, propertyTable)
+  constrainMinimumQuality(dialogObserver, propertyTable)
 end
 
 ---@param propertyTable table<string, any>
@@ -555,6 +589,8 @@ end
 local function endDialog(propertyTable, why)
   propertyTable:removeObserver('HEICUseHDR', dialogObserver)
   propertyTable:removeObserver('HEICColorSpace', dialogObserver)
+  propertyTable:removeObserver('HEICMinQuality', dialogObserver)
+  propertyTable:removeObserver('HEICMaxQuality', dialogObserver)
 end
 
 ---Builds the HEIC settings section in Lightroom's export dialog.
@@ -565,114 +601,77 @@ local function sectionForFilterInDialog(viewFactory, propertyTable)
   local f = viewFactory
   local bind = LrView.bind
   local negbind = LrBinding.negativeOfKey
+  local encodingLabelWidth = 80
+  local qualitySliderWidth = 120
+  local hdrLabelWidth = 140
+  local function bindGainMapResEnabled()
+    return bind({
+      keys = { 'HEICUseHDR', 'HEICHDRMode' },
+      operation = function(binder, v)
+        return v.HEICUseHDR and v.HEICHDRMode ~= 'hdrOnly'
+      end,
+    })
+  end
+  local function bindGainMapSourceEnabled()
+    return bind({
+      keys = { 'HEICUseHDR', 'HEICHDRMode' },
+      operation = function(binder, v)
+        return v.HEICUseHDR and v.HEICHDRMode == 'sdrAndGain'
+      end,
+    })
+  end
 
   return {
     title = 'HEIC Settings',
 
-    f:row { -- root row
-      margin_top = 8,
-      margin_bottom = 8,
-      spacing = 18,
+    f:row {
+      fill_horizontal = 0,
+      spacing = 12,
 
-      f:column { -- left-column
-        spacing = 12,
+      f:group_box {
+        title = 'Encoding',
+        fill_vertical = 1,
+        spacing = 8,
 
-        f:row { -- control 1: quality
+        f:row {
+          spacing = 4,
           f:static_text {
             title = 'Quality:',
             enabled = negbind 'HEICUseSizeLimit',
-            width_in_chars = 8,
+            width = encodingLabelWidth,
             alignment = 'right',
           },
-          f:spacer { width = 2 },
           f:slider {
             value = bind 'HEICQuality',
             enabled = negbind 'HEICUseSizeLimit',
             min = 0,
             max = 100,
             integral = true,
+            width = qualitySliderWidth,
+            place_vertical = 0.5,
+          },
+          f:edit_field {
+            value = bind 'HEICQuality',
+            enabled = negbind 'HEICUseSizeLimit',
+            min = 0,
+            max = 100,
+            precision = 0,
+            immediate = true,
+            width_in_digits = 3,
           },
           f:static_text {
-            title = bind({
-              key = 'HEICQuality',
-              transform = formatPercentage,
-            }),
+            title = '%',
             enabled = negbind 'HEICUseSizeLimit',
           },
-        }, -- control 1: quality
+        },
 
-        f:row { -- control 2: color space
-          f:static_text {
-            width_in_chars = 8,
-            alignment = 'right',
-            title = 'Color Space:',
-          },
-          f:spacer { width = 2 },
-          f:popup_menu {
-            width_in_chars = 8,
-            items = bind({
-              key = 'HEICUseHDR',
-              transform = colorSpaceItems,
-            }),
-            value = bind 'HEICColorSpace',
-          },
-        }, -- control 2: color space
-
-        f:row { -- control 3: bit depth
-          f:static_text {
-            width_in_chars = 8,
-            alignment = 'right',
-            title = 'Bit Depth:',
-          },
-          f:spacer { width = 2 },
-          f:radio_button {
-            value = bind 'HEICBitDepth',
-            title = '8',
-            checked_value = 8,
-            tooltip = 'Controls the HEIF primary image bit depth. '
-              .. 'The HDR gain map is encoded separately.',
-          },
-          f:radio_button {
-            value = bind 'HEICBitDepth',
-            title = '10',
-            checked_value = 10,
-            tooltip = 'Controls the HEIF primary image bit depth. '
-              .. 'The HDR gain map is encoded separately.',
-          },
-        }, -- control 3: bit depth
-
-        f:row { -- control 4: hdr
-          f:static_text {
-            width_in_chars = 8,
-            alignment = 'right',
-            title = 'HDR:',
-          },
-          f:spacer { width = 2 },
+        f:row {
+          spacing = 4,
+          f:static_text { width = encodingLabelWidth },
+          f:static_text { width = 0 },
           f:checkbox {
-            value = bind 'HEICUseHDR',
-            title = 'Export HDR HEIC',
-          },
-        }, -- control 4: hdr
-
-        f:row { -- control 5: diagnostics
-          f:static_text { width_in_chars = 8, title = '' },
-          f:spacer { width = 2 },
-          f:checkbox {
-            value = bind 'HEICKeepIntermediateTIFFs',
-            title = 'Keep intermediate TIFFs',
-            tooltip = 'Preserves the Lightroom-rendered TIFF inputs next to '
-              .. 'the output for inspection.',
-          },
-        }, -- control 5: diagnostics
-      }, -- left-column
-
-      f:column { -- right column
-        spacing = 12,
-
-        f:row { -- control 1: file size
-          f:checkbox {
+            title = 'Limit file size to:',
             value = bind 'HEICUseSizeLimit',
-            title = 'Limit File Size To:',
           },
           f:edit_field {
             value = bind 'HEICSizeLimit',
@@ -681,48 +680,242 @@ local function sectionForFilterInDialog(viewFactory, propertyTable)
             large_increment = 1000,
             min = 1,
             max = 1000000,
+            precision = 0,
+            immediate = true,
             width_in_digits = 7,
           },
-          f:static_text { title = 'K' },
-        }, -- control 1: file size
+          f:static_text {
+            title = 'KB',
+            enabled = bind 'HEICUseSizeLimit',
+          },
+        },
 
-        f:view { -- control 2: min quality
-          visible = bind 'HEICUseSizeLimit',
-          place = 'horizontal',
-          f:static_text { width_in_chars = 9, title = 'Minimal Quality:' },
+        f:row {
+          spacing = 4,
+          f:static_text {
+            title = 'Minimum:',
+            enabled = bind 'HEICUseSizeLimit',
+            width = encodingLabelWidth,
+            alignment = 'right',
+          },
           f:slider {
             value = bind 'HEICMinQuality',
+            enabled = bind 'HEICUseSizeLimit',
             min = 0,
             max = 100,
             integral = true,
+            width = qualitySliderWidth,
+            place_vertical = 0.5,
+          },
+          f:edit_field {
+            value = bind 'HEICMinQuality',
+            enabled = bind 'HEICUseSizeLimit',
+            min = 0,
+            max = 100,
+            precision = 0,
+            immediate = true,
+            width_in_digits = 3,
           },
           f:static_text {
-            title = bind({
-              key = 'HEICMinQuality',
-              transform = formatPercentage,
-            }),
+            title = '%',
+            enabled = bind 'HEICUseSizeLimit',
           },
         },
 
-        f:view { -- control 3: max quality
-          visible = bind 'HEICUseSizeLimit',
-          place = 'horizontal',
-          f:static_text { width_in_chars = 9, title = 'Maximal Quality:' },
+        f:row {
+          spacing = 4,
+          f:static_text {
+            title = 'Maximum:',
+            enabled = bind 'HEICUseSizeLimit',
+            width = encodingLabelWidth,
+            alignment = 'right',
+          },
           f:slider {
             value = bind 'HEICMaxQuality',
+            enabled = bind 'HEICUseSizeLimit',
             min = 0,
             max = 100,
             integral = true,
+            width = qualitySliderWidth,
+            place_vertical = 0.5,
+          },
+          f:edit_field {
+            value = bind 'HEICMaxQuality',
+            enabled = bind 'HEICUseSizeLimit',
+            min = 0,
+            max = 100,
+            precision = 0,
+            immediate = true,
+            width_in_digits = 3,
           },
           f:static_text {
-            title = bind({
-              key = 'HEICMaxQuality',
-              transform = formatPercentage,
-            }),
+            title = '%',
+            enabled = bind 'HEICUseSizeLimit',
           },
         },
-      }, -- right column
-    }, -- root row
+
+        f:row {
+          spacing = 4,
+          f:static_text {
+            title = 'Bit Depth:',
+            width = encodingLabelWidth,
+            alignment = 'right',
+          },
+          f:popup_menu {
+            items = {
+              { title = '8 bits/component', value = 8 },
+              { title = '10 bits/component', value = 10 },
+            },
+            value = bind 'HEICBitDepth',
+            width_in_chars = 15,
+          },
+          f:static_text {
+            title = 'ⓘ',
+            tooltip = 'Controls the HEIF primary image bit depth. '
+              .. 'The HDR gain map is encoded separately.',
+          },
+        },
+
+        f:row {
+          spacing = 4,
+          f:static_text {
+            title = 'Color Space:',
+            width = encodingLabelWidth,
+            alignment = 'right',
+          },
+          f:popup_menu {
+            width_in_chars = 15,
+            items = bind({
+              key = 'HEICUseHDR',
+              transform = colorSpaceItems,
+            }),
+            value = bind 'HEICColorSpace',
+          },
+        },
+      },
+
+      f:column {
+        fill_horizontal = 1,
+        spacing = 12,
+
+        f:group_box {
+          title = 'HDR',
+          fill_horizontal = 1,
+          spacing = 8,
+
+          f:row {
+            margin_left = hdrLabelWidth - 8,
+            f:checkbox {
+              title = 'HDR Output',
+              value = bind 'HEICUseHDR',
+            },
+          },
+
+          f:row {
+            spacing = 4,
+            f:static_text {
+              title = 'Mode:',
+              width = hdrLabelWidth,
+              alignment = 'right',
+              enabled = bind 'HEICUseHDR',
+            },
+            f:popup_menu {
+              value = bind 'HEICHDRMode',
+              enabled = bind 'HEICUseHDR',
+              items = {
+                {
+                  title = 'SDR primary + HDR gain map (Recommended)',
+                  value = 'sdrAndGain',
+                },
+                { title = 'HDR primary only', value = 'hdrOnly' },
+                {
+                  title = 'HDR primary + SDR recovery map',
+                  value = 'hdrAndInverseGain',
+                },
+              },
+              width_in_chars = 26,
+            },
+          },
+
+          f:row {
+            spacing = 4,
+            f:static_text {
+              title = bind({
+                key = 'HEICHDRMode',
+                transform = gainMapResolutionTitle,
+              }),
+              width = hdrLabelWidth,
+              alignment = 'right',
+              enabled = bindGainMapResEnabled(),
+            },
+            f:static_text { width = 0 },
+            f:radio_button {
+              title = '1:1',
+              value = bind 'HEICGainMapSubsampleFactor',
+              enabled = bindGainMapResEnabled(),
+              checked_value = 1,
+            },
+            f:radio_button {
+              title = '1/2',
+              value = bind 'HEICGainMapSubsampleFactor',
+              enabled = bindGainMapResEnabled(),
+              checked_value = 2,
+            },
+            f:radio_button {
+              title = '1/3',
+              value = bind 'HEICGainMapSubsampleFactor',
+              enabled = bindGainMapResEnabled(),
+              checked_value = 3,
+            },
+            f:radio_button {
+              title = '1/4',
+              value = bind 'HEICGainMapSubsampleFactor',
+              enabled = bindGainMapResEnabled(),
+              checked_value = 4,
+            },
+          },
+
+          f:row {
+            spacing = 4,
+            f:static_text {
+              title = 'Gain Map Source:',
+              width = hdrLabelWidth,
+              alignment = 'right',
+              enabled = bindGainMapSourceEnabled(),
+            },
+            f:popup_menu {
+              value = bind 'HEICGainMapSource',
+              enabled = bindGainMapSourceEnabled(),
+              items = {
+                {
+                  title = 'Two TIFF renditions (Recommended)',
+                  value = 'twoTiffs',
+                },
+                {
+                  title = 'Embedded TIFF gain map (Experimental)',
+                  value = 'oneTiff',
+                },
+              },
+              width_in_chars = 26,
+            },
+          },
+        },
+
+        f:group_box {
+          title = 'Diagnostics',
+          fill_horizontal = 1,
+          spacing = 8,
+          margin_left = 12,
+
+          f:checkbox {
+            value = bind 'HEICKeepIntermediates',
+            title = 'Keep intermediate files',
+            tooltip = 'Preserves Lightroom-rendered encoder inputs next '
+              .. 'to the output for inspection.',
+          },
+        },
+      },
+    },
   }
 end
 
@@ -741,7 +934,7 @@ local function postProcessRenderedPhotos(functionContext, filterContext)
   ---@type ExportOptions
   local exportOptions = {
     useHDR = p.HEICUseHDR,
-    keepIntermediateTIFFs = p.HEICKeepIntermediateTIFFs,
+    keepIntermediates = p.HEICKeepIntermediates,
   }
 
   local converterPath = LrPathUtils.child(
@@ -826,7 +1019,10 @@ return {
     { key = 'HEICColorSpace', default = 'SRGB' },
     { key = 'HEICBitDepth', default = 10 },
     { key = 'HEICUseHDR', default = false },
-    { key = 'HEICKeepIntermediateTIFFs', default = false },
+    { key = 'HEICHDRMode', default = 'sdrAndGain' },
+    { key = 'HEICGainMapSubsampleFactor', default = 2 },
+    { key = 'HEICGainMapSource', default = 'twoTiffs' },
+    { key = 'HEICKeepIntermediates', default = false },
   },
 
   hideSections = { 'video', 'fileSettings' },

@@ -5,6 +5,11 @@ constraints, and validation methods relevant to LRExportHEIC. It deliberately
 separates standards-level behavior from codec choices and platform-specific
 implementation behavior.
 
+Detailed implementation notes are available in:
+
+- [ImageIO HEIF Authoring](imageio_heif.md)
+- [Lightroom HDR TIFF Structure](lightroom_hdr_tiff.md)
+
 Unless explicitly stated otherwise:
 
 - "must" describes a requirement imposed by a cited specification or by this

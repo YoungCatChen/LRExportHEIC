@@ -190,9 +190,16 @@ SDR primary + gain pixels + metadata
               ISO tmap HEIC
 ```
 
-The prototype used ImageMagick to normalize the private-photometric SubIFD into
-raw RGBA16. Production code should instead use libtiff or a deliberately narrow
-native decoder supporting the TIFF variants Lightroom emits.
+The original prototype used ImageMagick to normalize the private-photometric
+SubIFD into raw RGBA16. LRExportHEIC avoids that runtime dependency by making an
+in-memory copy of the TIFF, redirecting the header's first-IFD pointer to the
+gain-map SubIFD, and changing only its private photometric value to ordinary
+RGB. ImageIO then performs the actual strip/tile and compression decoding. The
+source file is never modified.
+
+This adapter deliberately parses only enough TIFF structure to locate and
+validate the SubIFD and metadata. It does not duplicate ImageIO's TIFF pixel
+decoder.
 
 The output gain map can be spatially downsampled before it is handed to
 ImageIO. Resampling must occur in encoded gain space with the reconstruction

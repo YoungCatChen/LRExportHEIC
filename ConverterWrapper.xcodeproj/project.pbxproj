@@ -13,6 +13,9 @@
 		0C6122982B64A97B00C51150 /* QualitySearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79762B55C02D00E05595 /* QualitySearch.swift */; };
 		A10000032B55C02D00E05595 /* HEIFEncoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000012B55C02D00E05595 /* HEIFEncoding.swift */; };
 		A10000042B55C02D00E05595 /* WriteSizeLimitedHEIF.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79792B55C02D00E05595 /* WriteSizeLimitedHEIF.swift */; };
+		A30000122C00000000E05595 /* LightroomHDRTIFF.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000102C00000000E05595 /* LightroomHDRTIFF.swift */; };
+		A30000132C00000000E05595 /* LightroomHDRTIFF.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000102C00000000E05595 /* LightroomHDRTIFF.swift */; };
+		A30000142C00000000E05595 /* LightroomHDRTIFFTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000112C00000000E05595 /* LightroomHDRTIFFTests.swift */; };
 		F30AC0362B55B9A10062A2FD /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30AC0352B55B9A10062A2FD /* main.swift */; };
 		F3563CF22B55B76F002CB007 /* ConverterWrapperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF12B55B76F002CB007 /* ConverterWrapperApp.swift */; };
 		F3563CF42B55B76F002CB007 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF32B55B76F002CB007 /* ContentView.swift */; };
@@ -77,6 +80,8 @@
 		F35C79752B55C02D00E05595 /* EnhancedOptions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EnhancedOptions.swift; sourceTree = "<group>"; };
 		F35C79762B55C02D00E05595 /* QualitySearch.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QualitySearch.swift; sourceTree = "<group>"; };
 		A10000012B55C02D00E05595 /* HEIFEncoding.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HEIFEncoding.swift; sourceTree = "<group>"; };
+		A30000102C00000000E05595 /* LightroomHDRTIFF.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LightroomHDRTIFF.swift; sourceTree = "<group>"; };
+		A30000112C00000000E05595 /* LightroomHDRTIFFTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LightroomHDRTIFFTests.swift; sourceTree = "<group>"; };
 		F35C79782B55C02D00E05595 /* ForwardPipe.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ForwardPipe.swift; sourceTree = "<group>"; };
 		F35C79792B55C02D00E05595 /* WriteSizeLimitedHEIF.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WriteSizeLimitedHEIF.swift; sourceTree = "<group>"; };
 		F35C79842B55C18400E05595 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -115,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				0C61226B2B64969800C51150 /* LRExportHEICTests.swift */,
+				A30000112C00000000E05595 /* LightroomHDRTIFFTests.swift */,
 				0C61226C2B64969800C51150 /* QualitySearchTests.swift */,
 			);
 			path = ConvertToHeicTests;
@@ -126,6 +132,7 @@
 				F35C79752B55C02D00E05595 /* EnhancedOptions.swift */,
 				F35C79742B55C02D00E05595 /* ExportHEICCommand.swift */,
 				F35C79782B55C02D00E05595 /* ForwardPipe.swift */,
+				A30000102C00000000E05595 /* LightroomHDRTIFF.swift */,
 				F35C79762B55C02D00E05595 /* QualitySearch.swift */,
 				F35C79792B55C02D00E05595 /* WriteSizeLimitedHEIF.swift */,
 				F30AC0352B55B9A10062A2FD /* main.swift */,
@@ -322,6 +329,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000032B55C02D00E05595 /* HEIFEncoding.swift in Sources */,
+				A30000132C00000000E05595 /* LightroomHDRTIFF.swift in Sources */,
+				A30000142C00000000E05595 /* LightroomHDRTIFFTests.swift in Sources */,
 				0C6122982B64A97B00C51150 /* QualitySearch.swift in Sources */,
 				0C61226E2B64969800C51150 /* QualitySearchTests.swift in Sources */,
 				0C61226D2B64969800C51150 /* LRExportHEICTests.swift in Sources */,
@@ -335,6 +344,7 @@
 			files = (
 				0C6122952B64A7F900C51150 /* QualitySearch.swift in Sources */,
 				F35C797A2B55C02D00E05595 /* ExportHEICCommand.swift in Sources */,
+				A30000122C00000000E05595 /* LightroomHDRTIFF.swift in Sources */,
 				F35C797D2B55C02D00E05595 /* HEIFEncoding.swift in Sources */,
 				F35C797F2B55C02D00E05595 /* WriteSizeLimitedHEIF.swift in Sources */,
 				F35C797B2B55C02D00E05595 /* EnhancedOptions.swift in Sources */,

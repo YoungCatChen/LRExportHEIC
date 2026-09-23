@@ -68,6 +68,26 @@ final class LRExportHEICTests: XCTestCase {
       XCTAssertFalse(signature.hdrOutput)
       XCTAssertEqual(signature.outputFile, "output.heic")
     }
+
+    func testParsesEmbeddedGainMapMode() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "--hdr-output",
+        "--embedded-gain-map",
+        "--gain-map-subsample-factor", "2",
+        "--input-file", "adaptive.tif",
+        "output.heic",
+      ])
+
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+
+      XCTAssertTrue(signature.hdrOutput)
+      XCTAssertTrue(signature.embeddedGainMap)
+      XCTAssertEqual(signature.gainMapSubsampleFactor, 2)
+      XCTAssertNil(signature.hdrInputFile)
+    }
   #endif
 
   func testWritesEightBitHEIF() throws {

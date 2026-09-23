@@ -89,6 +89,11 @@ struct ExportHEICCommand: Command {
     @Flag(name: "hdr-primary", help: "Write the primary input as native HDR without a gain map")
     var hdrPrimary: Bool
 
+    @Flag(
+      name: "embedded-gain-map",
+      help: "Read an existing ISO gain map from a Lightroom-compatible TIFF")
+    var embeddedGainMap: Bool
+
     @Option(
       name: "gain-map-channels",
       help: "HDR gain map channels. Default: rgb",
@@ -161,6 +166,10 @@ struct ExportHEICCommand: Command {
     } else {
       hdrImage = nil
     }
+    let existingGainMap =
+      signature.embeddedGainMap
+      ? try LightroomHDRTIFF.readGainMap(from: signature.inputFileURL)
+      : nil
 
     let sourceBitDepth = inputImage.properties["Depth"] as? Int ?? 8
     let outputBitDepth = HEIFBitDepth(
@@ -173,6 +182,12 @@ struct ExportHEICCommand: Command {
     let dynamicRange: DynamicRangeRepresentation
     if signature.hdrPrimary {
       dynamicRange = .hdr
+    } else if let existingGainMap {
+      dynamicRange = .gainMapped(
+        gainMap: existingGainMap,
+        options: GainMapOptions(
+          channels: .rgb,
+          subsampleFactor: signature.gainMapSubsampleFactor ?? 1))
     } else if let hdrImage {
       dynamicRange = .adaptiveHDR(
         alternate: HDRRendition(image: hdrImage),
@@ -195,6 +210,8 @@ struct ExportHEICCommand: Command {
         "Input color space: \(String(describing: inputImage.colorSpace))")
       context.console.print("Input bit depth: \(sourceBitDepth)")
       context.console.print("HDR output: \(signature.hdrOutput)")
+      context.console.print(
+        "Embedded gain map: \(signature.embeddedGainMap)")
       if let hdrInputFileURL = signature.hdrInputFileURL,
         let hdrImage = hdrImage
       {
@@ -265,11 +282,18 @@ extension ExportHEICCommand.ExportHEICCommandSignature {
     } else {
       if sizeLimit == nil { throw MyError.missingEitherArgument(["quality", "size-limit"]) }
     }
-    if hdrOutput && hdrInputFile == nil {
+    if hdrOutput && hdrInputFile == nil && !embeddedGainMap {
       throw MyError.requiredArgument("hdr-input-file", "hdr-output")
     }
     if hdrOutput && hdrPrimary {
       throw MyError.coexistencyNotAllowed("hdr-output", "hdr-primary")
+    }
+    if embeddedGainMap && !hdrOutput {
+      throw MyError.argumentRequiresFlag("embedded-gain-map", "hdr-output")
+    }
+    if embeddedGainMap && hdrInputFile != nil {
+      throw MyError.coexistencyNotAllowed(
+        "embedded-gain-map", "hdr-input-file")
     }
     if !hdrOutput && hdrInputFile != nil {
       throw MyError.argumentRequiresFlag("hdr-input-file", "hdr-output")

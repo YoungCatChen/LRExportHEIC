@@ -90,11 +90,21 @@ end
 ---@param colorSpace ColorSpaceSpec
 ---@param useHDR boolean
 ---@param hdrMode string
+---@param gainMapSource string
 ---@return RenderProfiles profiles
-local function makeRenderProfiles(colorSpace, useHDR, hdrMode)
+local function makeRenderProfiles(colorSpace, useHDR, hdrMode, gainMapSource)
   local primaryIsHDR = useHDR and hdrMode == Model.hdrModes.hdrOnly
+  local primaryHasGainMap = useHDR
+    and hdrMode == Model.hdrModes.sdrAndGain
+    and gainMapSource == Model.gainMapSources.oneTiff
+  local primaryUsesHDRExport = primaryIsHDR or primaryHasGainMap
   local hdrAlternate = nil
-  if useHDR and not primaryIsHDR and colorSpace.hdr then
+  if
+    useHDR
+    and not primaryIsHDR
+    and not primaryHasGainMap
+    and colorSpace.hdr
+  then
     hdrAlternate = {
       label = 'HDR alternate',
       format = 'TIFF',
@@ -108,14 +118,16 @@ local function makeRenderProfiles(colorSpace, useHDR, hdrMode)
   end
   return {
     primary = {
-      label = primaryIsHDR and 'primary HDR' or 'primary SDR',
+      label = primaryIsHDR and 'primary HDR'
+        or primaryHasGainMap and 'adaptive HDR primary'
+        or 'primary SDR',
       format = 'TIFF',
       extensions = { tif = true, tiff = true },
       bitDepth = primaryIsHDR and 32 or 16,
-      colorSpace = primaryIsHDR and colorSpace.hdr or colorSpace.sdr,
+      colorSpace = primaryUsesHDRExport and colorSpace.hdr or colorSpace.sdr,
       compressionMethod = 'compressionMethod_ZIP',
-      enableHDRDisplay = primaryIsHDR,
-      maximumCompatibility = false,
+      enableHDRDisplay = primaryUsesHDRExport,
+      maximumCompatibility = primaryHasGainMap,
     },
     hdrAlternate = hdrAlternate,
   }
@@ -472,14 +484,18 @@ function Processor.postProcessRenderedPhotos(functionContext, filterContext)
     colorSpace = Model.colorSpaces.SRGB
   end
   local hdrMode = p.HEICHDRMode or Model.hdrModes.sdrAndGain
+  local gainMapSource = p.HEICGainMapSource or Model.gainMapSources.twoTiffs
   if p.HEICUseHDR and hdrMode == Model.hdrModes.hdrAndInverseGain then
     error('HDR primary with a recovery map is not implemented yet')
   end
-  local profiles = makeRenderProfiles(colorSpace, p.HEICUseHDR, hdrMode)
+  local profiles =
+    makeRenderProfiles(colorSpace, p.HEICUseHDR, hdrMode, gainMapSource)
 
   ---@type ExportOptions
   local exportOptions = {
-    renderHDRAlternate = p.HEICUseHDR and hdrMode == Model.hdrModes.sdrAndGain,
+    renderHDRAlternate = p.HEICUseHDR
+      and hdrMode == Model.hdrModes.sdrAndGain
+      and gainMapSource == Model.gainMapSources.twoTiffs,
     keepIntermediates = p.HEICKeepIntermediates,
   }
 
@@ -503,9 +519,13 @@ function Processor.postProcessRenderedPhotos(functionContext, filterContext)
   end
   if p.HEICUseHDR and hdrMode == Model.hdrModes.sdrAndGain then
     cmd = cmd
-      .. ' --hdr-output --gain-map-channels rgb'
-      .. ' --gain-map-subsample-factor '
+      .. ' --hdr-output --gain-map-subsample-factor '
       .. tostring(p.HEICGainMapSubsampleFactor or 1)
+    if gainMapSource == Model.gainMapSources.oneTiff then
+      cmd = cmd .. ' --embedded-gain-map'
+    else
+      cmd = cmd .. ' --gain-map-channels rgb'
+    end
   elseif p.HEICUseHDR and hdrMode == Model.hdrModes.hdrOnly then
     cmd = cmd .. ' --hdr-primary'
   end

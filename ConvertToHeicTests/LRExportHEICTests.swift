@@ -48,6 +48,24 @@ final class LRExportHEICTests: XCTestCase {
       XCTAssertEqual(signature.gainMapChannelsName, "rgb")
       XCTAssertEqual(signature.outputFile, "output.heic")
     }
+
+    func testParsesNativeHDRMode() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "--hdr-primary",
+        "--output-bit-depth", "10",
+        "--input-file", "hdr.tif",
+        "output.heic",
+      ])
+
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+
+      XCTAssertTrue(signature.hdrPrimary)
+      XCTAssertFalse(signature.hdrOutput)
+      XCTAssertEqual(signature.outputFile, "output.heic")
+    }
   #endif
 
   func testWritesEightBitHEIF() throws {
@@ -74,6 +92,30 @@ final class LRExportHEICTests: XCTestCase {
 
     XCTAssertEqual(try primaryDepth(of: outputURL), 10)
     XCTAssertNil(try gainMapDescription(of: outputURL))
+  }
+
+  func testWritesNativeHDRHEIF() throws {
+    let outputURL = temporaryDirectory.appendingPathComponent("native-hdr.heic")
+    let pq = try XCTUnwrap(CGColorSpace(name: CGColorSpace.itur_2100_PQ))
+    let request = HEIFEncodingRequest(
+      primary: PrimaryRendition(
+        image: makeHDRImage(),
+        outputBitDepth: .ten,
+        outputColorSpace: pq),
+      dynamicRange: .hdr)
+
+    try writeHEIF(
+      request,
+      to: outputURL,
+      quality: 0.9,
+      verbose: false)
+
+    XCTAssertEqual(try primaryDepth(of: outputURL), 10)
+    XCTAssertNil(try gainMapDescription(of: outputURL))
+    let properties = try primaryProperties(of: outputURL)
+    let profileName = try XCTUnwrap(
+      properties[kCGImagePropertyProfileName] as? String)
+    XCTAssertTrue(profileName.localizedCaseInsensitiveContains("PQ"))
   }
 
   func testWritesAdaptiveHDRWithRGBGainMap() throws {
@@ -217,11 +259,15 @@ final class LRExportHEICTests: XCTestCase {
   }
 
   private func primaryDepth(of url: URL) throws -> Int {
+    let properties = try primaryProperties(of: url)
+    return try XCTUnwrap(properties[kCGImagePropertyDepth] as? Int)
+  }
+
+  private func primaryProperties(of url: URL) throws -> [CFString: Any] {
     let source = try imageSource(for: url)
-    let properties = try XCTUnwrap(
+    return try XCTUnwrap(
       CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
         as? [CFString: Any])
-    return try XCTUnwrap(properties[kCGImagePropertyDepth] as? Int)
   }
 
   private func gainMapDescription(

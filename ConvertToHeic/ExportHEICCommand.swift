@@ -86,6 +86,9 @@ struct ExportHEICCommand: Command {
     @Flag(name: "hdr-output", help: "Write HDR HEIC with a gain map. Requires macOS 15 or newer")
     var hdrOutput: Bool
 
+    @Flag(name: "hdr-primary", help: "Write the primary input as native HDR without a gain map")
+    var hdrPrimary: Bool
+
     @Option(
       name: "gain-map-channels",
       help: "HDR gain map channels. Default: rgb",
@@ -135,7 +138,11 @@ struct ExportHEICCommand: Command {
     try signature.enhanceOptions()
     try signature.checkOptions()
 
-    guard let inputImage = CIImage(contentsOf: signature.inputFileURL) else {
+    let inputImage =
+      signature.hdrPrimary
+      ? Self.readHDRImage(from: signature.inputFileURL)
+      : CIImage(contentsOf: signature.inputFileURL)
+    guard let inputImage else {
       throw ExportHEICError.couldNotReadImage(signature.inputFileURL.path)
     }
 
@@ -158,7 +165,9 @@ struct ExportHEICCommand: Command {
       ?? inputImage.colorSpace
       ?? CGColorSpace(name: CGColorSpace.sRGB)!
     let dynamicRange: DynamicRangeRepresentation
-    if let hdrImage {
+    if signature.hdrPrimary {
+      dynamicRange = .hdr
+    } else if let hdrImage {
       dynamicRange = .adaptiveHDR(
         alternate: HDRRendition(image: hdrImage),
         gainMap: GainMapOptions(channels: signature.gainMapChannels))
@@ -250,6 +259,9 @@ extension ExportHEICCommand.ExportHEICCommandSignature {
     }
     if hdrOutput && hdrInputFile == nil {
       throw MyError.requiredArgument("hdr-input-file", "hdr-output")
+    }
+    if hdrOutput && hdrPrimary {
+      throw MyError.coexistencyNotAllowed("hdr-output", "hdr-primary")
     }
     if !hdrOutput && hdrInputFile != nil {
       throw MyError.argumentRequiresFlag("hdr-input-file", "hdr-output")

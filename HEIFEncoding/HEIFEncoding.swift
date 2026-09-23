@@ -46,6 +46,7 @@ public struct GainMapOptions {
 
 public enum DynamicRangeRepresentation {
   case sdr
+  case hdr
   case adaptiveHDR(alternate: HDRRendition, gainMap: GainMapOptions)
 }
 
@@ -104,6 +105,8 @@ public func writeHEIF(
   switch request.dynamicRange {
   case .sdr:
     break
+  case .hdr:
+    break
   case .adaptiveHDR(let alternate, let gainMap):
     guard #available(macOS 15.0, *) else {
       throw HEIFEncodingError.adaptiveHDRRequiresMacOS15
@@ -152,7 +155,7 @@ extension DynamicRangeRepresentation {
     switch self {
     case .sdr:
       return false
-    case .adaptiveHDR:
+    case .hdr, .adaptiveHDR:
       return true
     }
   }

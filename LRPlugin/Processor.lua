@@ -88,10 +88,13 @@ end
 ---@field hdrAlternate RenderProfile?
 
 ---@param colorSpace ColorSpaceSpec
+---@param useHDR boolean
+---@param hdrMode string
 ---@return RenderProfiles profiles
-local function makeRenderProfiles(colorSpace)
+local function makeRenderProfiles(colorSpace, useHDR, hdrMode)
+  local primaryIsHDR = useHDR and hdrMode == Model.hdrModes.hdrOnly
   local hdrAlternate = nil
-  if colorSpace.hdr then
+  if useHDR and not primaryIsHDR and colorSpace.hdr then
     hdrAlternate = {
       label = 'HDR alternate',
       format = 'TIFF',
@@ -105,13 +108,13 @@ local function makeRenderProfiles(colorSpace)
   end
   return {
     primary = {
-      label = 'primary SDR',
+      label = primaryIsHDR and 'primary HDR' or 'primary SDR',
       format = 'TIFF',
       extensions = { tif = true, tiff = true },
-      bitDepth = 16,
-      colorSpace = colorSpace.sdr,
+      bitDepth = primaryIsHDR and 32 or 16,
+      colorSpace = primaryIsHDR and colorSpace.hdr or colorSpace.sdr,
       compressionMethod = 'compressionMethod_ZIP',
-      enableHDRDisplay = false,
+      enableHDRDisplay = primaryIsHDR,
       maximumCompatibility = false,
     },
     hdrAlternate = hdrAlternate,
@@ -369,7 +372,7 @@ local function runEncoder(
 end
 
 ---@class ExportOptions
----@field useHDR boolean
+---@field renderHDRAlternate boolean
 ---@field keepIntermediates boolean
 
 ---@class RenditionJob
@@ -389,7 +392,7 @@ end
 local function processRenditionActual(job)
   job.primaryPath = waitForRender(job.sourceRendition, job.profiles.primary)
 
-  if job.options.useHDR then
+  if job.options.renderHDRAlternate then
     if
       not job.sharedRenderSettings
       or not job.workingDirectory
@@ -468,11 +471,15 @@ function Processor.postProcessRenderedPhotos(functionContext, filterContext)
     p.HEICColorSpace = 'SRGB'
     colorSpace = Model.colorSpaces.SRGB
   end
-  local profiles = makeRenderProfiles(colorSpace)
+  local hdrMode = p.HEICHDRMode or Model.hdrModes.sdrAndGain
+  if p.HEICUseHDR and hdrMode == Model.hdrModes.hdrAndInverseGain then
+    error('HDR primary with a recovery map is not implemented yet')
+  end
+  local profiles = makeRenderProfiles(colorSpace, p.HEICUseHDR, hdrMode)
 
   ---@type ExportOptions
   local exportOptions = {
-    useHDR = p.HEICUseHDR,
+    renderHDRAlternate = p.HEICUseHDR and hdrMode == Model.hdrModes.sdrAndGain,
     keepIntermediates = p.HEICKeepIntermediates,
   }
 
@@ -494,15 +501,16 @@ function Processor.postProcessRenderedPhotos(functionContext, filterContext)
   else
     cmd = cmd .. ' --quality ' .. (p.HEICQuality / 100)
   end
-  if p.HEICUseHDR then
+  if p.HEICUseHDR and hdrMode == Model.hdrModes.sdrAndGain then
     cmd = cmd .. ' --hdr-output --gain-map-channels rgb'
+  elseif p.HEICUseHDR and hdrMode == Model.hdrModes.hdrOnly then
+    cmd = cmd .. ' --hdr-primary'
   end
   local outputBitDepth = p.HEICBitDepth or 10
-  cmd = cmd
-    .. ' --output-bit-depth '
-    .. tostring(outputBitDepth)
-    .. ' --output-color-space '
-    .. shellQuote(colorSpace.output)
+  cmd = cmd .. ' --output-bit-depth ' .. tostring(outputBitDepth)
+  if not (p.HEICUseHDR and hdrMode == Model.hdrModes.hdrOnly) then
+    cmd = cmd .. ' --output-color-space ' .. shellQuote(colorSpace.output)
+  end
 
   local sharedRenderSettingsByRendition = {}
   local workingDirectoriesByRendition = {}

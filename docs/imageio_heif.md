@@ -99,12 +99,22 @@ The current ImageIO SDK also declares a staged interface using:
 - `kCGImageDestinationEncodeGainMapPixelFormatRequest`;
 - `kCGImageDestinationEncodeGainMapSubsampleFactor`.
 
-This interface can request a gain-map pixel format and spatial subsampling
-factor. It is newer than the simple `.hdrImage` interface and must be guarded by
-the availability version imported by the build SDK.
+This interface declares controls for gain-map pixel format and spatial
+subsampling. It is newer than the simple `.hdrImage` interface and must be
+guarded by the availability version imported by the build SDK.
 
 The staged implementation still expects an SDR base followed by an
 extended-range HDR alternate. It is not an automatic inverse-map generator.
+Testing also found that adding only the staged subsampling key to the
+high-level `.hdrImage` options is silently ignored, while an attempted direct
+two-image staged call was not sufficiently stable for production use. The
+project therefore does not currently depend on this interface.
+
+To produce a lower-resolution generated map reliably, LRExportHEIC first lets
+Core Image create a normal ISO gain-map HEIF, reads its gain pixels and metadata,
+resamples the gain image, and writes the final `tmap` through the low-level
+auxiliary-data API. This costs an additional temporary encode but preserves
+ImageIO's reconstruction parameters.
 
 ## Attach an existing ISO gain map
 

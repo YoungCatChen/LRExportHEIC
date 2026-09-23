@@ -35,6 +35,7 @@ final class LRExportHEICTests: XCTestCase {
         "--quality", "0.75",
         "--hdr-output",
         "--gain-map-channels", "rgb",
+        "--gain-map-subsample-factor", "2",
         "--output-bit-depth", "8",
         "--output-color-space", "DisplayP3",
         "--input-file", "primary.tif",
@@ -46,6 +47,7 @@ final class LRExportHEICTests: XCTestCase {
         from: &input)
 
       XCTAssertEqual(signature.gainMapChannelsName, "rgb")
+      XCTAssertEqual(signature.gainMapSubsampleFactor, 2)
       XCTAssertEqual(signature.outputFile, "output.heic")
     }
 
@@ -162,6 +164,27 @@ final class LRExportHEICTests: XCTestCase {
     XCTAssertEqual(gainMap.pixelFormat, fourCC("L008"))
   }
 
+  func testWritesSubsampledAdaptiveHDRGainMap() throws {
+    guard #available(macOS 26.0, *) else {
+      throw XCTSkip("Gain-map subsampling requires macOS 26 or later")
+    }
+    let outputURL = temporaryDirectory.appendingPathComponent(
+      "hdr-half-gain-map.heic")
+
+    try writeHEIF(
+      makeRequest(
+        outputBitDepth: .ten,
+        hdrImage: makeHDRImage(),
+        gainMapSubsampleFactor: 2),
+      to: outputURL,
+      quality: 0.9,
+      verbose: false)
+
+    let gainMap = try XCTUnwrap(gainMapDescription(of: outputURL))
+    XCTAssertEqual(gainMap.width, 32)
+    XCTAssertEqual(gainMap.height, 24)
+  }
+
   func testSizeLimitedAdaptiveHDRPreservesEncodingMode() throws {
     guard #available(macOS 15.0, *) else {
       throw XCTSkip("Adaptive HDR encoding requires macOS 15 or later")
@@ -240,13 +263,16 @@ final class LRExportHEICTests: XCTestCase {
   private func makeRequest(
     outputBitDepth: HEIFBitDepth,
     hdrImage: CIImage? = nil,
-    gainMapChannels: GainMapChannels = .rgb
+    gainMapChannels: GainMapChannels = .rgb,
+    gainMapSubsampleFactor: Int = 1
   ) throws -> HEIFEncodingRequest {
     let dynamicRange: DynamicRangeRepresentation
     if let hdrImage {
       dynamicRange = .adaptiveHDR(
         alternate: HDRRendition(image: hdrImage),
-        gainMap: GainMapOptions(channels: gainMapChannels))
+        gainMap: GainMapOptions(
+          channels: gainMapChannels,
+          subsampleFactor: gainMapSubsampleFactor))
     } else {
       dynamicRange = .sdr
     }

@@ -95,6 +95,12 @@ struct ExportHEICCommand: Command {
       allowedValues: ["mono", "rgb"])
     var gainMapChannelsName: String?
 
+    @Option(
+      name: "gain-map-subsample-factor",
+      help: "Gain map width and height divisor. Default: 1",
+      allowedValues: 1...4)
+    var gainMapSubsampleFactor: Int?
+
     @Argument(name: "output-file", help: "Path to where the output file will be placed")
     var outputFile: String
 
@@ -170,7 +176,9 @@ struct ExportHEICCommand: Command {
     } else if let hdrImage {
       dynamicRange = .adaptiveHDR(
         alternate: HDRRendition(image: hdrImage),
-        gainMap: GainMapOptions(channels: signature.gainMapChannels))
+        gainMap: GainMapOptions(
+          channels: signature.gainMapChannels,
+          subsampleFactor: signature.gainMapSubsampleFactor ?? 1))
     } else {
       dynamicRange = .sdr
     }
@@ -268,6 +276,10 @@ extension ExportHEICCommand.ExportHEICCommandSignature {
     }
     if !hdrOutput && gainMapChannelsName != nil {
       throw MyError.argumentRequiresFlag("gain-map-channels", "hdr-output")
+    }
+    if !hdrOutput && gainMapSubsampleFactor != nil {
+      throw MyError.argumentRequiresFlag(
+        "gain-map-subsample-factor", "hdr-output")
     }
   }
 }

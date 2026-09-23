@@ -502,7 +502,10 @@ function Processor.postProcessRenderedPhotos(functionContext, filterContext)
     cmd = cmd .. ' --quality ' .. (p.HEICQuality / 100)
   end
   if p.HEICUseHDR and hdrMode == Model.hdrModes.sdrAndGain then
-    cmd = cmd .. ' --hdr-output --gain-map-channels rgb'
+    cmd = cmd
+      .. ' --hdr-output --gain-map-channels rgb'
+      .. ' --gain-map-subsample-factor '
+      .. tostring(p.HEICGainMapSubsampleFactor or 1)
   elseif p.HEICUseHDR and hdrMode == Model.hdrModes.hdrOnly then
     cmd = cmd .. ' --hdr-primary'
   end

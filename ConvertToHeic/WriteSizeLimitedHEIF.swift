@@ -4,6 +4,10 @@ import Foundation
   import HEIFEncoding
 #endif
 
+/// Searches final compression quality using one immutable encoding request.
+///
+/// It retains candidate files so the selected result needs no additional encode.
+/// Adaptive-HDR candidates each use ImageIO's native final gain-map generation.
 func writeSizeLimitedHEIF(
   _ request: HEIFEncodingRequest,
   to destinationURL: URL,

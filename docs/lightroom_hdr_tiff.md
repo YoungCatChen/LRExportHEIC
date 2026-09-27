@@ -167,12 +167,12 @@ SubIFD as `kCGImageAuxiliaryDataTypeISOGainMap`. Consequently:
 - an inspection tool that relies only on ImageIO reports a false-negative
   SDR-only result.
 
-This is why a direct conversion needs its own TIFF adapter even though ImageIO
-can author the final HEIF gain-map container.
+Reading this representation therefore requires a TIFF adapter even though
+ImageIO can author a final HEIF gain-map container.
 
-## Conversion pipeline
+## Possible conversion pipeline
 
-The direct path is:
+A converter that preserves the embedded map would need this path:
 
 ```text
 Maximum Compatibility TIFF
@@ -190,18 +190,17 @@ SDR primary + gain pixels + metadata
               ISO tmap HEIC
 ```
 
-The original prototype used ImageMagick to normalize the private-photometric
-SubIFD into raw RGBA16. LRExportHEIC avoids that runtime dependency by making an
-in-memory copy of the TIFF, redirecting the header's first-IFD pointer to the
-gain-map SubIFD, and changing only its private photometric value to ordinary
-RGB. ImageIO then performs the actual strip/tile and compression decoding. The
-source file is never modified.
+One implementation can avoid a TIFF pixel decoder by making an in-memory copy
+of the TIFF, redirecting the header's first-IFD pointer to the gain-map SubIFD,
+and changing only its private photometric value to ordinary RGB. ImageIO can
+then perform the strip or tile and compression decoding without modifying the
+source file.
 
 This adapter deliberately parses only enough TIFF structure to locate and
 validate the SubIFD and metadata. It does not duplicate ImageIO's TIFF pixel
 decoder.
 
-The output gain map can be spatially downsampled before it is handed to
+The output gain map could be spatially downsampled before it is handed to
 ImageIO. Resampling must occur in encoded gain space with the reconstruction
 metadata kept consistent; do not treat the samples as an ordinary display RGB
 image.
@@ -218,5 +217,8 @@ should:
 5. Fall back to separate SDR and HDR Lightroom renditions on any unsupported
    variation.
 
-The two-rendition path therefore remains a compatibility mechanism even when
-the single-TIFF path is preferred for fidelity and filter-pipeline consistency.
+LRExportHEIC does not import this private representation. Its supported
+adaptive-HDR path requests separate authored SDR and HDR renditions, then lets
+ImageIO generate and compress the final gain map. This avoids depending on the
+private TIFF layout and on the low-level auxiliary attachment path, whose gain
+map compression quality is not controllable through public API.

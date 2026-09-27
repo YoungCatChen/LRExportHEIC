@@ -18,16 +18,19 @@ Here is roughly what happens:
   requested location and cleaning up the working directory.
   - SDR export requests a 16-bit TIFF in the selected output gamut, independent
     of the requested HEIF bit depth.
-  - HDR export requests two Lightroom-authored TIFF renditions in corresponding
-    SDR and HDR color spaces: a 16-bit SDR primary and a separate 32-bit float
-    HDR rendition. The known pairs are `sRGB`/`sRGB_hdr`,
-    `DisplayP3`/`p3_hdr`, and `Rec2020`/`Rec2020_hdr`. These are the same three
-    HDR spaces exposed by Lightroom's built-in export UI.
+  - Adaptive HDR export requests separate 16-bit SDR and HDR TIFF renditions in
+    corresponding color spaces. The HDR rendition uses Lightroom's PQ encoding
+    rather than its 32-bit extended-linear representation. The known pairs are
+    `sRGB`/`sRGB_hdr`, `DisplayP3`/`p3_hdr`, and
+    `Rec2020`/`Rec2020_hdr`. These are the same three HDR spaces exposed by
+    Lightroom's built-in export UI.
 - ExportHEIC uses a helper executable to encode the intermediate rendition or
-  renditions as an HEIC file. For HDR export, the helper encodes
-  the SDR rendition at the selected 8-bit or 10-bit primary depth and combines
-  it with the HDR rendition using an RGB ISO HDR gain map; it does not
-  synthesize the SDR primary by tone-mapping the HDR rendition.
+  renditions as an HEIC file. The helper can write either rendition as the
+  selected 8-bit or 10-bit primary. For adaptive HDR, it supplies the authored
+  SDR and HDR pair to ImageIO during the final encode so ImageIO derives and
+  compresses an RGB ISO gain map. It does not synthesize the SDR rendition by
+  tone-mapping HDR. File-size search repeats this native final encoding at each
+  candidate quality.
 - The encoded HEIF file is written to the exact destination path supplied by
   Lightroom. Its filename therefore normally retains a `.jpg` extension even
   though the file contents are HEIF; changing the path would leave Lightroom's

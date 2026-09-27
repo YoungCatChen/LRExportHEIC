@@ -127,6 +127,12 @@ At SDR headroom, a forward gain map has a weight near zero, so the decoder shows
 the base rendition. As available display headroom increases, the decoder applies
 more of the gain map until reaching the encoded alternate rendition.
 
+ISO 21496-1 keeps `decoded_gain` oriented from SDR toward HDR. If the base is
+HDR and the alternate is SDR, the headroom ordering makes `weight` negative;
+the gain values themselves do not need to be negated. See
+[ImageIO HEIF Authoring](imageio_heif.md#inverse-gain-maps) for the corresponding
+metadata transformation.
+
 This makes the base rendition part of the authored image, not merely a decoder
 fallback detail. A structurally valid adaptive HDR file can still have a poor
 SDR presentation if its base rendition was clipped or tone-mapped poorly.
@@ -327,7 +333,6 @@ For LRExportHEIC, the preferred policy is:
 - use the Lightroom-authored SDR output as the primary image;
 - use the Lightroom-authored HDR output as the alternate image;
 - default to an RGB gain map when chromatic differences must be preserved;
-- offer mono gain maps as a size or compatibility tradeoff;
 - refuse mismatched geometry rather than silently resize;
 - refuse to overwrite an output unless explicitly requested;
 - decode and validate the result after encoding.

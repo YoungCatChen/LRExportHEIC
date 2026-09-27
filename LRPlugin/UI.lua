@@ -35,17 +35,14 @@ local function constrainMaximumQuality(observer, propertyTable)
   end
 end
 
----@param hdrMode string
----@return string
-local function gainMapResolutionTitle(hdrMode)
-  if hdrMode == Model.hdrModes.hdrAndInverseGain then
-    return 'Recovery Map Resolution:'
-  end
-  return 'Gain Map Resolution:'
-end
-
 ---@param propertyTable table<string, any>
 function UI.startDialog(propertyTable)
+  if
+    propertyTable.HEICHDRMode ~= Model.hdrModes.sdrAndGain
+    and propertyTable.HEICHDRMode ~= Model.hdrModes.hdrOnly
+  then
+    propertyTable.HEICHDRMode = Model.hdrModes.sdrAndGain
+  end
   propertyTable:addObserver(
     'HEICUseHDR',
     dialogObserver,
@@ -89,23 +86,14 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
   local negbind = LrBinding.negativeOfKey
   local encodingLabelWidth = 80
   local qualitySliderWidth = 120
-  local hdrLabelWidth = 140
-  local function bindGainMapResEnabled()
-    return bind({
-      keys = { 'HEICUseHDR', 'HEICHDRMode' },
-      operation = function(binder, v)
-        return v.HEICUseHDR and v.HEICHDRMode ~= Model.hdrModes.hdrOnly
-      end,
-    })
-  end
-  local function bindGainMapSourceEnabled()
-    return bind({
-      keys = { 'HEICUseHDR', 'HEICHDRMode' },
-      operation = function(binder, v)
-        return v.HEICUseHDR and v.HEICHDRMode == Model.hdrModes.sdrAndGain
-      end,
-    })
-  end
+  local hdrLabelWidth = 50
+  local adaptiveHDROnly = bind({
+    keys = { 'HEICUseHDR', 'HEICHDRMode' },
+    operation = function(binder, values)
+      return values.HEICUseHDR
+        and values.HEICHDRMode == Model.hdrModes.sdrAndGain
+    end,
+  })
 
   return {
     title = 'HEIC Settings',
@@ -252,11 +240,6 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
             value = bind 'HEICBitDepth',
             width_in_chars = 15,
           },
-          f:static_text {
-            title = 'ⓘ',
-            tooltip = 'Controls the HEIF primary image bit depth. '
-              .. 'The HDR gain map is encoded separately.',
-          },
         },
 
         f:row {
@@ -308,61 +291,15 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
               items = Model.hdrModeItems,
               width_in_chars = 26,
             },
-          },
-
-          f:row {
-            spacing = 4,
             f:static_text {
-              title = bind({
-                key = 'HEICHDRMode',
-                transform = gainMapResolutionTitle,
-              }),
-              width = hdrLabelWidth,
-              alignment = 'right',
-              enabled = bindGainMapResEnabled(),
-            },
-            f:static_text { width = 0 },
-            f:radio_button {
-              title = '1:1',
-              value = bind 'HEICGainMapSubsampleFactor',
-              enabled = bindGainMapResEnabled(),
-              checked_value = 1,
-            },
-            f:radio_button {
-              title = '1/2',
-              value = bind 'HEICGainMapSubsampleFactor',
-              enabled = bindGainMapResEnabled(),
-              checked_value = 2,
-            },
-            f:radio_button {
-              title = '1/3',
-              value = bind 'HEICGainMapSubsampleFactor',
-              enabled = bindGainMapResEnabled(),
-              checked_value = 3,
-            },
-            f:radio_button {
-              title = '1/4',
-              value = bind 'HEICGainMapSubsampleFactor',
-              enabled = bindGainMapResEnabled(),
-              checked_value = 4,
+              title = 'ⓘ',
+              visible = adaptiveHDROnly,
+              tooltip = 'Due to an ImageIO limitation, the gain map has a '
+                .. 'minimum quality of 90%, and is always encoded at '
+                .. '8 bits/component.',
             },
           },
 
-          f:row {
-            spacing = 4,
-            f:static_text {
-              title = 'Gain Map Source:',
-              width = hdrLabelWidth,
-              alignment = 'right',
-              enabled = bindGainMapSourceEnabled(),
-            },
-            f:popup_menu {
-              value = bind 'HEICGainMapSource',
-              enabled = bindGainMapSourceEnabled(),
-              items = Model.gainMapSourceItems,
-              width_in_chars = 26,
-            },
-          },
         },
 
         f:group_box {

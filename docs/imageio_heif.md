@@ -6,8 +6,8 @@ project's development system. Framework behavior can change between operating
 system releases, so every output must be inspected and decoded after writing.
 
 For gain-map terminology and validation principles, see
-[HDR and Gain Map Reference](hdr_gain_map_reference.md). For the Lightroom TIFF
-input used by the direct gain-map path, see
+[HDR and Gain Map Reference](hdr_gain_map_reference.md). For an observed
+Lightroom private gain-map container, see
 [Lightroom HDR TIFF](lightroom_hdr_tiff.md).
 
 ## Representation choices
@@ -28,6 +28,12 @@ headrooms and determines the reconstruction direction.
 The unsupported row is specifically automatic inverse-map generation. A legal
 inverse map can still be encoded when the caller supplies its pixels and
 metadata.
+
+LRExportHEIC supports the first three rows only. Adaptive HDR output always
+uses an authored SDR primary and HDR alternate in the high-level automatic
+generation path. Existing gain maps and HDR-primary inverse maps are not
+accepted because the low-level attachment path does not provide adequate
+control over final auxiliary compression.
 
 ## Ordinary SDR and native HDR
 
@@ -110,11 +116,9 @@ high-level `.hdrImage` options is silently ignored, while an attempted direct
 two-image staged call was not sufficiently stable for production use. The
 project therefore does not currently depend on this interface.
 
-To produce a lower-resolution generated map reliably, LRExportHEIC first lets
-Core Image create a normal ISO gain-map HEIF, reads its gain pixels and metadata,
-resamples the gain image, and writes the final `tmap` through the low-level
-auxiliary-data API. This costs an additional temporary encode but preserves
-ImageIO's reconstruction parameters.
+LRExportHEIC does not use the staged interface. It supplies the SDR and HDR
+renditions to the high-level `.hdrImage` path during every final encode and lets
+ImageIO choose the gain-map resolution and coded representation.
 
 ## Attach an existing ISO gain map
 
@@ -202,7 +206,6 @@ the supplied metadata describes it correctly, including:
 
 ```text
 BaseHeadroom > AlternateHeadroom
-GainMapMin and GainMapMax normally non-positive
 ```
 
 The automatic `.hdrImage` and staged generation paths do not calculate this
@@ -210,13 +213,49 @@ inverse representation. The application must calculate the map or transform a
 known forward representation, then attach the result through
 `CGImageDestinationAddAuxiliaryDataInfo`.
 
-The simplified reconstruction remains:
+ISO 21496-1 stores the gain magnitude from the SDR representation toward the
+HDR representation regardless of which rendition is the base. The decoder
+derives a signed interpolation weight from the ordering of `BaseHeadroom` and
+`AlternateHeadroom`. Therefore, converting a generated forward map into its
+equivalent inverse representation requires:
+
+- preserving the encoded gain-map samples;
+- preserving `GainMapMin`, `GainMapMax`, and `Gamma`;
+- swapping base and alternate headroom;
+- swapping base and alternate offsets;
+- toggling `BaseColorIsWorkingColor`, so the same working color space remains
+  selected after the renditions exchange roles.
+
+Do not negate `GainMapMin`/`GainMapMax` or replace each encoded sample `u` with
+`1-u`. That would apply the direction twice. This is easy to miss because a
+container inspector will still report a structurally valid `tmap`.
+
+The simplified reconstruction is:
 
 ```text
-alternate = (base + baseOffset) * 2^gain - alternateOffset
+weight = sign(AlternateHeadroom - BaseHeadroom)
+alternate =
+  (base + baseOffset) * 2^(gainMagnitude * weight)
+  - alternateOffset
 ```
 
-For an HDR base and SDR alternate, `gain` is generally negative.
+For an HDR base and SDR alternate, `weight` is negative.
+
+A caller can create an inverse map by first obtaining a normal SDR-primary map,
+applying the metadata transformation above, and attaching the unchanged gain
+samples to the original HDR primary. This preserves the same SDR/HDR
+relationship without implementing a second gain-map estimator.
+
+When validating an inverse map with Core Image, `image.applyingGainMap(map)`
+selects the maximum available headroom and therefore returns the HDR base
+unchanged. Request the SDR endpoint explicitly:
+
+```swift
+let sdrAlternate = hdrBase.applyingGainMap(gainMap, headroom: 1)
+```
+
+The project's analyzer detects the headroom ordering and uses this form for
+inverse maps.
 
 ## Important ImageIO behavior
 
@@ -230,11 +269,34 @@ primary, the high-level writer ignored the supplied inverse map.
 Use the low-level auxiliary-data API when the caller already owns the gain-map
 pixels and metadata.
 
-### Quality is coupled
+### Quality controls differ by authoring path
 
-The ordinary ImageIO compression-quality option controls the primary and the
-automatically generated gain map together. Supplying an independent auxiliary
-quality option did not change the output in testing.
+For the high-level automatic-generation path, the ordinary ImageIO
+compression-quality option is part of the operation that writes both the
+primary and generated gain map. Supplying an independent auxiliary quality
+option did not change the output in testing.
+
+It was observed that automatic RGB gain-map compression follows approximately
+the ordinary 8-bit HEIF quality scale, but with a quality floor near `0.9`.
+Gain-map payload size remained constant while requested quality ranged from
+`0.1` through `0.9`, then increased consistently with higher requested quality.
+This resembles:
+
+```text
+gain_map_quality ≈ max(requested_quality, 0.9)
+```
+
+This relationship is observed behavior, not an API guarantee. It may change
+with the OS, codec implementation, image content, or requested pixel format.
+
+For the low-level `CGImageDestinationAddAuxiliaryDataInfo` path, the quality
+property passed to `CGImageDestinationAddImage` controls the primary only. It
+was observed that gain-map item sizes remained unchanged across the requested
+quality range while primary item sizes changed substantially. The auxiliary API
+takes raw pixels but exposes no separate compression-quality parameter, so its
+encoder quality is controlled internally by ImageIO. Consequently, a
+size-limited writer using this path can vary primary quality but retains a
+nearly fixed gain-map payload.
 
 Applications that need a strict size budget can control:
 

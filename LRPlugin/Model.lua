@@ -3,6 +3,7 @@
 ---@field sdr string
 ---@field hdr? string
 ---@field output string
+---@field hdrOutput? string
 
 local Model = {}
 
@@ -13,12 +14,14 @@ Model.colorSpaces = {
     sdr = 'sRGB',
     hdr = 'sRGB_hdr',
     output = 'SRGB',
+    hdrOutput = 'ITUR_709_PQ',
   },
   DisplayP3 = {
     title = 'Display P3',
     sdr = 'DisplayP3',
     hdr = 'p3_hdr',
     output = 'DisplayP3',
+    hdrOutput = 'DisplayP3_PQ',
   },
   AdobeRGB1998 = {
     title = 'Adobe RGB',
@@ -30,6 +33,7 @@ Model.colorSpaces = {
     sdr = 'Rec2020',
     hdr = 'Rec2020_hdr',
     output = 'ITUR_2020',
+    hdrOutput = 'ITUR_2100_PQ',
   },
 }
 
@@ -57,7 +61,6 @@ Model.bitDepthItems = {
 Model.hdrModes = {
   sdrAndGain = 'sdrAndGain',
   hdrOnly = 'hdrOnly',
-  hdrAndInverseGain = 'hdrAndInverseGain',
 }
 
 Model.hdrModeItems = {
@@ -66,26 +69,6 @@ Model.hdrModeItems = {
     value = Model.hdrModes.sdrAndGain,
   },
   { title = 'HDR primary only', value = Model.hdrModes.hdrOnly },
-  {
-    title = 'HDR primary + SDR recovery map',
-    value = Model.hdrModes.hdrAndInverseGain,
-  },
-}
-
-Model.gainMapSources = {
-  twoTiffs = 'twoTiffs',
-  oneTiff = 'oneTiff',
-}
-
-Model.gainMapSourceItems = {
-  {
-    title = 'Two TIFF renditions (Recommended)',
-    value = Model.gainMapSources.twoTiffs,
-  },
-  {
-    title = 'Embedded TIFF gain map (Experimental)',
-    value = Model.gainMapSources.oneTiff,
-  },
 }
 
 Model.exportPresetFields = {
@@ -98,8 +81,6 @@ Model.exportPresetFields = {
   { key = 'HEICBitDepth', default = 10 },
   { key = 'HEICUseHDR', default = false },
   { key = 'HEICHDRMode', default = Model.hdrModes.sdrAndGain },
-  { key = 'HEICGainMapSubsampleFactor', default = 2 },
-  { key = 'HEICGainMapSource', default = Model.gainMapSources.twoTiffs },
   { key = 'HEICKeepIntermediates', default = false },
 }
 

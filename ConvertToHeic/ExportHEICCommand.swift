@@ -7,235 +7,195 @@ import Foundation
 #endif
 
 enum ExportHEICError: Error, CustomStringConvertible {
+  case couldNotReadImage(String)
+
   var description: String {
     switch self {
     case .couldNotReadImage(let path):
       return "Could not read image file: \(path)"
     }
   }
-
-  case couldNotReadImage(String)
 }
 
 struct ExportHEICCommand: Command {
   public struct ExportHEICCommandSignature: CommandSignature {
-    @Option(
-      name: "input-file",
-      help: "Path to input image file; the SDR primary with --hdr-output",
-      required: true)
-    var inputFile: String!
+    @Option(name: "sdr-from", help: "Path to the authored SDR rendition")
+    var sdrFrom: String?
+
+    @Option(name: "hdr-from", help: "Path to the authored HDR rendition")
+    var hdrFrom: String?
 
     @Option(
-      name: "hdr-input-file",
-      help: "Path to the Lightroom-rendered HDR image used with --hdr-output")
-    var hdrInputFile: String?
-
-    @Option(
-      name: "quality", help: "Compression quality. Cannot be used with --size-limit. Allowed range: 0.0 - 1.0",
+      name: "quality",
+      help: "Compression quality. Cannot be used with --size-limit. Allowed range: 0.0 - 1.0",
       allowedValues: 0.0...1.0)
     var quality: Double?
 
     @Option(
       name: "size-limit",
-      help: "Limit the size in bytes of the resulting image file, instead of specifying a "
-        + "quality directly. Cannot be used with --quality",
+      help: "Limit the size in bytes instead of specifying quality. Cannot be used with --quality",
       allowedValues: 1...Int64.max)
     var sizeLimit: Int64?
 
     @Option(
       name: "size-limit-accuracy",
-      help: "When this program tries multiple times to find the satisfying quality, it can stop early to save time "
-        + "if the file's size satisfies `size limit * accuracy <= actual size <= size limit`. "
-        + "Allowed range: 0.1 - 1.0. Default: 0.9",
+      help: "Accept a result at least this fraction of the size limit. Default: 0.9",
       allowedValues: 0.1...1.0)
     var sizeLimitAccuracy: Double?
 
     @Option(
       name: "min-quality",
-      help: "Minimal allowed compression quality, if --size-limit is used. Allowed range: 0.0 - 1.0. Default: 0.0",
+      help: "Minimum quality used with --size-limit. Default: 0.0",
       allowedValues: 0.0...1.0)
     var minQuality: Double?
 
     @Option(
       name: "max-quality",
-      help: "Maximal allowed compression quality, if --size-limit is used. Allowed range: 0.0 - 1.0. Default: 1.0",
+      help: "Maximum quality used with --size-limit. Default: 1.0",
       allowedValues: 0.0...1.0)
     var maxQuality: Double?
 
     @Option(
       name: "output-color-space",
-      help: "Name of the output color space. Omit to use input image color space",
+      help: "Output color space. Omit to infer it from the primary input",
       allowedValues: [
         CGColorSpace.sRGB,
         CGColorSpace.displayP3,
         CGColorSpace.adobeRGB1998,
         CGColorSpace.itur_2020,
         CGColorSpace.rommrgb,
+        CGColorSpace.itur_709_PQ,
+        CGColorSpace.displayP3_PQ,
+        CGColorSpace.itur_2100_PQ,
       ].map { ($0 as String).replacingOccurrences(of: "kCGColorSpace", with: "") })
     var outputColorSpaceName: String?
 
     @Option(
       name: "output-bit-depth",
-      help: "HEIF primary image bit depth. Omit to infer from the input image",
+      help: "HEIF primary image bit depth. Omit to infer from the primary input",
       allowedValues: [8, 10])
     var outputBitDepthValue: Int?
 
-    @Flag(name: "verbose", help: "Print the decision making process verbosely")
+    @Flag(name: "verbose", help: "Print encoding decisions verbosely")
     var verbose: Bool
 
-    @Flag(name: "hdr-output", help: "Write HDR HEIC with a gain map. Requires macOS 15 or newer")
-    var hdrOutput: Bool
-
-    @Flag(name: "hdr-primary", help: "Write the primary input as native HDR without a gain map")
-    var hdrPrimary: Bool
-
-    @Flag(
-      name: "embedded-gain-map",
-      help: "Read an existing ISO gain map from a Lightroom-compatible TIFF")
-    var embeddedGainMap: Bool
-
-    @Option(
-      name: "gain-map-channels",
-      help: "HDR gain map channels. Default: rgb",
-      allowedValues: ["mono", "rgb"])
-    var gainMapChannelsName: String?
-
-    @Option(
-      name: "gain-map-subsample-factor",
-      help: "Gain map width and height divisor. Default: 1",
-      allowedValues: 1...4)
-    var gainMapSubsampleFactor: Int?
-
-    @Argument(name: "output-file", help: "Path to where the output file will be placed")
+    @Argument(name: "output-file", help: "Path to the output file")
     var outputFile: String
 
-    var inputFileURL: URL! {
-      guard let inputFile = self.inputFile else {
-        fatalError("Missing inputFile")
-      }
+    var sdrFromURL: URL? {
+      return sdrFrom.map(URL.init(fileURLWithPath:))
+    }
 
-      return URL(fileURLWithPath: inputFile)
+    var hdrFromURL: URL? {
+      return hdrFrom.map(URL.init(fileURLWithPath:))
     }
 
     var outputFileURL: URL {
       return URL(fileURLWithPath: outputFile)
     }
 
-    var hdrInputFileURL: URL? {
-      return hdrInputFile.map { URL(fileURLWithPath: $0) }
-    }
-
     var outputColorSpace: CGColorSpace? {
-      guard let outputColorSpaceName = self.outputColorSpaceName else {
+      guard let outputColorSpaceName else {
         return nil
       }
-
       return CGColorSpace(
         name: "kCGColorSpace\(outputColorSpaceName)" as CFString)
-    }
-
-    var gainMapChannels: GainMapChannels {
-      return gainMapChannelsName == "mono" ? .monochrome : .rgb
     }
 
     public init() {}
   }
 
   var help: String {
-    return "Export input image file as HEIC"
+    return "Export authored SDR and HDR renditions as HEIC"
   }
 
-  func run(using context: CommandContext, signature: ExportHEICCommandSignature) throws {
+  /// Executes one CLI export from authored inputs through final HEIF encoding.
+  ///
+  /// Input paths determine the representation: SDR only, HDR only, or an SDR
+  /// primary plus an HDR alternate when both paths are supplied.
+  func run(
+    using context: CommandContext,
+    signature: ExportHEICCommandSignature
+  ) throws {
     try signature.enhanceOptions()
     try signature.checkOptions()
 
-    let inputImage =
-      signature.hdrPrimary
-      ? Self.readHDRImage(from: signature.inputFileURL)
-      : CIImage(contentsOf: signature.inputFileURL)
-    guard let inputImage else {
-      throw ExportHEICError.couldNotReadImage(signature.inputFileURL.path)
+    let sdrImage = try signature.sdrFromURL.map {
+      try requireImage(Self.readSDRImage(from: $0), at: $0)
+    }
+    let hdrImage = try signature.hdrFromURL.map {
+      try requireImage(Self.readHDRImage(from: $0), at: $0)
     }
 
-    let hdrImage: CIImage?
-    if let hdrInputFileURL = signature.hdrInputFileURL {
-      hdrImage = Self.readHDRImage(from: hdrInputFileURL)
-      guard hdrImage != nil else {
-        throw ExportHEICError.couldNotReadImage(hdrInputFileURL.path)
-      }
-    } else {
-      hdrImage = nil
-    }
-    let existingGainMap =
-      signature.embeddedGainMap
-      ? try LightroomHDRTIFF.readGainMap(from: signature.inputFileURL)
-      : nil
-
-    let sourceBitDepth = inputImage.properties["Depth"] as? Int ?? 8
+    let primaryImage = sdrImage ?? hdrImage!
+    let sourceBitDepth = primaryImage.properties["Depth"] as? Int ?? 8
     let outputBitDepth = HEIFBitDepth(
       rawValue: signature.outputBitDepthValue
         ?? (sourceBitDepth > 8 ? 10 : 8))!
-    let outputColorSpace =
-      signature.outputColorSpace
-      ?? inputImage.colorSpace
-      ?? CGColorSpace(name: CGColorSpace.sRGB)!
-    let dynamicRange: DynamicRangeRepresentation
-    if signature.hdrPrimary {
-      dynamicRange = .hdr
-    } else if let existingGainMap {
-      dynamicRange = .gainMapped(
-        gainMap: existingGainMap,
-        options: GainMapOptions(
-          channels: .rgb,
-          subsampleFactor: signature.gainMapSubsampleFactor ?? 1))
-    } else if let hdrImage {
-      dynamicRange = .adaptiveHDR(
-        alternate: HDRRendition(image: hdrImage),
-        gainMap: GainMapOptions(
-          channels: signature.gainMapChannels,
-          subsampleFactor: signature.gainMapSubsampleFactor ?? 1))
-    } else {
-      dynamicRange = .sdr
-    }
-    let encodingRequest = HEIFEncodingRequest(
-      primary: PrimaryRendition(
-        image: inputImage,
-        outputBitDepth: outputBitDepth,
-        outputColorSpace: outputColorSpace),
-      dynamicRange: dynamicRange)
 
+    let representation: HEIFRepresentation
+    let outputColorSpace: CGColorSpace
+    let representationName: String
+    switch (sdrImage, hdrImage) {
+    case (.some(let sdr), .none):
+      representation = .sdr(sdr)
+      outputColorSpace =
+        signature.outputColorSpace
+        ?? sdr.colorSpace
+        ?? CGColorSpace(name: CGColorSpace.sRGB)!
+      representationName = "SDR primary"
+    case (.none, .some(let hdr)):
+      representation = .hdr(hdr)
+      outputColorSpace =
+        signature.outputColorSpace
+        ?? hdr.colorSpace
+        .flatMap(Self.hdrOutputColorSpace)
+        ?? CGColorSpace(name: CGColorSpace.itur_2100_PQ)!
+      representationName = "HDR primary"
+    case (.some(let sdr), .some(let hdr)):
+      representation = .adaptiveHDR(
+        sdrPrimary: sdr,
+        hdrAlternate: hdr)
+      outputColorSpace =
+        signature.outputColorSpace
+        ?? sdr.colorSpace
+        ?? CGColorSpace(name: CGColorSpace.sRGB)!
+      representationName = "SDR primary + HDR gain map"
+    case (.none, .none):
+      preconditionFailure("Input validation accepted no rendition")
+    }
+
+    let request = HEIFEncodingRequest(
+      representation: representation,
+      outputBitDepth: outputBitDepth,
+      outputColorSpace: outputColorSpace)
     if signature.verbose {
-      context.console.print("Input URL: \(signature.inputFileURL!)")
+      context.console.print("Output representation: \(representationName)")
+      context.console.print("Source primary bit depth: \(sourceBitDepth)")
       context.console.print(
-        "Input color space: \(String(describing: inputImage.colorSpace))")
-      context.console.print("Input bit depth: \(sourceBitDepth)")
-      context.console.print("HDR output: \(signature.hdrOutput)")
-      context.console.print(
-        "Embedded gain map: \(signature.embeddedGainMap)")
-      if let hdrInputFileURL = signature.hdrInputFileURL,
-        let hdrImage = hdrImage
-      {
-        context.console.print("HDR Input URL: \(hdrInputFileURL)")
-        context.console.print(
-          "HDR input color space: \(String(describing: hdrImage.colorSpace))")
-      }
+        "Source primary color space: "
+          + String(describing: primaryImage.colorSpace))
     }
 
-    if signature.quality != nil {
+    if let quality = signature.quality {
       try writeHEIF(
-        encodingRequest,
+        request,
         to: signature.outputFileURL,
-        quality: signature.quality!,
+        quality: quality,
         verbose: signature.verbose)
     } else {
       try writeSizeLimitedHEIF(
-        encodingRequest,
+        request,
         to: signature.outputFileURL,
         withSizeLimit: signature.sizeLimit!,
         withSizeLimitAccuracy: signature.sizeLimitAccuracy ?? 0.9,
         withinRange: (signature.minQuality ?? 0)...(signature.maxQuality ?? 1),
         verbose: signature.verbose)
     }
+  }
+
+  private static func readSDRImage(from url: URL) -> CIImage? {
+    return CIImage(contentsOf: url)
   }
 
   private static func readHDRImage(from url: URL) -> CIImage? {
@@ -247,63 +207,74 @@ struct ExportHEICCommand: Command {
           .toneMapHDRtoSDR: false,
         ])
     }
-
     return CIImage(contentsOf: url)
+  }
+
+  private static func hdrOutputColorSpace(
+    for inputColorSpace: CGColorSpace
+  ) -> CGColorSpace? {
+    let name = String(describing: inputColorSpace.name).lowercased()
+    if name.contains("display p3") || name.contains("p3") {
+      return CGColorSpace(name: CGColorSpace.displayP3_PQ)
+    }
+    if name.contains("srgb") || name.contains("709") {
+      return CGColorSpace(name: CGColorSpace.itur_709_PQ)
+    }
+    return CGColorSpace(name: CGColorSpace.itur_2100_PQ)
+  }
+
+  private func requireImage(_ image: CIImage?, at url: URL) throws -> CIImage {
+    guard let image else {
+      throw ExportHEICError.couldNotReadImage(url.path)
+    }
+    return image
   }
 }
 
 extension ExportHEICCommand.ExportHEICCommandSignature {
-  enum MyError: Error, CustomStringConvertible {
+  enum ValidationError: Error, CustomStringConvertible {
+    case argumentNotAllowed(String, String)
+    case coexistencyNotAllowed(String, String)
+    case missingEitherArgument([String])
+
     var description: String {
       switch self {
-      case .coexistencyNotAllowed(let label, let anotherArgumentLabel):
-        return "`--\(label)` cannot be used with `--\(anotherArgumentLabel)`"
+      case .argumentNotAllowed(let label, let input):
+        return "`--\(label)` is not allowed with \(input)"
+      case .coexistencyNotAllowed(let label, let other):
+        return "`--\(label)` cannot be used with `--\(other)`"
       case .missingEitherArgument(let labels):
-        let flags = labels.map({ s in "--" + s }).joined(separator: ", ")
-        return "One of \(flags) must be specified"
-      case .requiredArgument(let label, let requiringLabel):
-        return "`--\(label)` is required with `--\(requiringLabel)`"
-      case .argumentRequiresFlag(let label, let flagLabel):
-        return "`--\(label)` requires `--\(flagLabel)`"
+        return "One of "
+          + labels.map { "--" + $0 }.joined(separator: ", ")
+          + " must be specified"
       }
     }
-
-    case coexistencyNotAllowed(_ label: String, _ anotherArgumentLabel: String)
-    case missingEitherArgument(_ labels: [String])
-    case requiredArgument(_ label: String, _ requiringLabel: String)
-    case argumentRequiresFlag(_ label: String, _ flagLabel: String)
   }
 
   func checkOptions() throws {
+    try validateQualityOptions()
+    if sdrFrom == nil && hdrFrom == nil {
+      throw ValidationError.missingEitherArgument(["sdr-from", "hdr-from"])
+    }
+  }
+
+  private func validateQualityOptions() throws {
     if quality != nil {
-      if sizeLimit != nil { throw MyError.coexistencyNotAllowed("quality", "size-limit") }
-      if minQuality != nil { throw MyError.coexistencyNotAllowed("quality", "min-quality") }
-      if maxQuality != nil { throw MyError.coexistencyNotAllowed("quality", "max-quality") }
-    } else {
-      if sizeLimit == nil { throw MyError.missingEitherArgument(["quality", "size-limit"]) }
-    }
-    if hdrOutput && hdrInputFile == nil && !embeddedGainMap {
-      throw MyError.requiredArgument("hdr-input-file", "hdr-output")
-    }
-    if hdrOutput && hdrPrimary {
-      throw MyError.coexistencyNotAllowed("hdr-output", "hdr-primary")
-    }
-    if embeddedGainMap && !hdrOutput {
-      throw MyError.argumentRequiresFlag("embedded-gain-map", "hdr-output")
-    }
-    if embeddedGainMap && hdrInputFile != nil {
-      throw MyError.coexistencyNotAllowed(
-        "embedded-gain-map", "hdr-input-file")
-    }
-    if !hdrOutput && hdrInputFile != nil {
-      throw MyError.argumentRequiresFlag("hdr-input-file", "hdr-output")
-    }
-    if !hdrOutput && gainMapChannelsName != nil {
-      throw MyError.argumentRequiresFlag("gain-map-channels", "hdr-output")
-    }
-    if !hdrOutput && gainMapSubsampleFactor != nil {
-      throw MyError.argumentRequiresFlag(
-        "gain-map-subsample-factor", "hdr-output")
+      if sizeLimit != nil {
+        throw ValidationError.coexistencyNotAllowed("quality", "size-limit")
+      }
+      if minQuality != nil {
+        throw ValidationError.coexistencyNotAllowed("quality", "min-quality")
+      }
+      if maxQuality != nil {
+        throw ValidationError.coexistencyNotAllowed("quality", "max-quality")
+      }
+      if sizeLimitAccuracy != nil {
+        throw ValidationError.coexistencyNotAllowed(
+          "quality", "size-limit-accuracy")
+      }
+    } else if sizeLimit == nil {
+      throw ValidationError.missingEitherArgument(["quality", "size-limit"])
     }
   }
 }

@@ -4,7 +4,8 @@ local LrLogger = import 'LrLogger'
 local LrPathUtils = import 'LrPathUtils'
 local LrTasks = import 'LrTasks'
 
-local Model = require 'Model'
+local ExportPlan = require 'ExportPlan'
+local WorkingSpace = require 'WorkingSpace'
 
 local Processor = {}
 local logger = LrLogger('ExportHEIC')
@@ -31,6 +32,8 @@ end
 ---@param key any
 ---@return boolean
 local function shouldShareRenderSetting(key)
+  -- Copy only pixel-affecting settings. Destination, format, service, and
+  -- plug-in-private settings belong to the independent alternate session.
   if type(key) ~= 'string' then
     return false
   end
@@ -73,125 +76,15 @@ local function captureSharedRenderSettings(exportSettings)
   return result
 end
 
----@class RenderProfile
----@field label string
----@field format string
----@field extensions table<string, boolean>
----@field bitDepth integer
----@field colorSpace string
----@field compressionMethod string
----@field enableHDRDisplay boolean
----@field maximumCompatibility boolean
-
----@class RenderProfiles
----@field primary RenderProfile
----@field hdrAlternate RenderProfile?
-
----@param colorSpace ColorSpaceSpec
----@return RenderProfiles profiles
-local function makeRenderProfiles(colorSpace)
-  local hdrAlternate = nil
-  if colorSpace.hdr then
-    hdrAlternate = {
-      label = 'HDR alternate',
-      format = 'TIFF',
-      extensions = { tif = true, tiff = true },
-      bitDepth = 32,
-      colorSpace = colorSpace.hdr,
-      compressionMethod = 'compressionMethod_ZIP',
-      enableHDRDisplay = true,
-      maximumCompatibility = false,
-    }
-  end
-  return {
-    primary = {
-      label = 'primary SDR',
-      format = 'TIFF',
-      extensions = { tif = true, tiff = true },
-      bitDepth = 16,
-      colorSpace = colorSpace.sdr,
-      compressionMethod = 'compressionMethod_ZIP',
-      enableHDRDisplay = false,
-      maximumCompatibility = false,
-    },
-    hdrAlternate = hdrAlternate,
-  }
-end
-
----@param exportSettings table<string, any>
----@param profile RenderProfile
-local function applyRenderProfile(exportSettings, profile)
-  exportSettings.LR_format = profile.format
-  exportSettings.LR_enableHDRDisplay = profile.enableHDRDisplay
-  exportSettings.LR_export_enableHDRDisplay = profile.enableHDRDisplay
-  exportSettings.LR_export_bitDepth = profile.bitDepth
-  exportSettings.LR_export_colorSpace = profile.colorSpace
-  exportSettings.LR_maximumCompatibility = profile.maximumCompatibility
-  exportSettings.LR_tiff_compressionMethod = profile.compressionMethod
-end
-
----Builds the file-export settings for the alternate rendering session.
----@param sharedRenderSettings table<string, any>
----@param destinationDirectory string
----@param profile RenderProfile
----@return table<string, any> exportSettings
-local function makeAlternateSessionSettings(
-  sharedRenderSettings,
-  destinationDirectory,
-  profile
-)
-  local result = {}
-  for key, value in pairs(sharedRenderSettings) do
-    result[key] = value
-  end
-
-  result.LR_export_destinationType = 'tempFolder'
-  result.LR_export_destinationPathPrefix = destinationDirectory
-  result.LR_export_useSubfolder = false
-  result.LR_export_subfolderName = ''
-  result.LR_collisionHandling = 'overwrite'
-  result.LR_exportServiceProvider = 'com.adobe.ag.export.file'
-  result.LR_reimportExportedPhoto = false
-  result.LR_renamingTokensOn = true
-  result.LR_extensionCase = 'lowercase'
-  result.LR_tokens = '{{image_name}}-alternate-hdr'
-
-  applyRenderProfile(result, profile)
-  return result
-end
-
----@return string path
-local function createWorkingDirectory()
-  -- Isolating each rendition keeps both inputs together, prevents filename
-  -- collisions, and gives the plug-in one directory to clean up.
-  local tempRoot = LrPathUtils.getStandardFilePath('temp')
-  local leaf =
-    string.format('lr-export-heic-%d-%06d', os.time(), math.random(0, 999999))
-  local path = LrPathUtils.child(tempRoot, leaf)
-  LrFileUtils.createDirectory(path)
-  if LrFileUtils.exists(path) ~= 'directory' then
-    error('Could not create temp directory: ' .. path)
-  end
-  return path
-end
-
----@param path string?
-local function deleteDir(path)
-  if not path then
-    return
-  end
-  pcall(function()
-    LrFileUtils.delete(path)
-  end)
-end
-
----@class LightroomRendition
+---@class SourceRendition
 ---@field photo any
----@field destinationPath string
 ---@field waitForRender fun(self: any): boolean, string
+
+---@class OutputRendition
+---@field destinationPath string
 ---@field renditionIsDone fun(self: any, success: boolean, message: string)
 
----@param rendition LightroomRendition
+---@param rendition SourceRendition
 ---@param profile RenderProfile
 ---@return string path
 local function waitForRender(rendition, profile)
@@ -209,34 +102,6 @@ local function waitForRender(rendition, profile)
     )
   end
   return pathOrMessage
-end
-
----Renders the HDR alternate in a separate Lightroom export session.
----@param photo any
----@param sharedRenderSettings table<string, any>
----@param destinationDirectory string
----@param profile RenderProfile
----@return string path
-local function renderAlternate(
-  photo,
-  sharedRenderSettings,
-  destinationDirectory,
-  profile
-)
-  local exportSession = LrExportSession {
-    photosToExport = { photo },
-    exportSettings = makeAlternateSessionSettings(
-      sharedRenderSettings,
-      destinationDirectory,
-      profile
-    ),
-  }
-  exportSession:doExportOnCurrentTask()
-
-  for _, rendition in exportSession:renditions() do
-    return waitForRender(rendition, profile)
-  end
-  error('Lightroom did not produce an ' .. profile.label .. ' rendition')
 end
 
 ---@param value any
@@ -274,80 +139,85 @@ local function readEncoderOutput(path)
   return contents
 end
 
----@param sourcePath string
----@param destinationPath string
-local function moveOrCopyReplacing(sourcePath, destinationPath)
-  if LrFileUtils.exists(destinationPath) then
-    local deleted, deleteError = LrFileUtils.delete(destinationPath)
-    if not deleted then
-      error('Could not replace preserved input: ' .. tostring(deleteError))
-    end
-  end
+---@class RenditionJob
+---@field plan ExportPlan
+---@field workingSpace WorkingSpace
+---@field sharedRenderSettings table<string, any>?
+---@field sourceRendition SourceRendition
+---@field outputRendition OutputRendition
+---@field primaryPath? string
+---@field alternatePath? string
+local RenditionJob = {}
+RenditionJob.__index = RenditionJob
 
-  local moved, moveError = LrFileUtils.move(sourcePath, destinationPath)
-  if moved then
-    return
-  end
-
-  local copied, copyError = LrFileUtils.copy(sourcePath, destinationPath)
-  if copied then
-    return
-  end
-  error(
-    'Could not preserve encoder input; move failed: '
-      .. tostring(moveError)
-      .. '; copy failed: '
-      .. tostring(copyError)
-  )
-end
-
----Moves encoder inputs beside the output, copying only across filesystems.
----@param primaryPath string
----@param hdrAlternatePath string?
----@param outputPath string
----@return string[] preservedPaths
-local function preserveEncoderInputs(primaryPath, hdrAlternatePath, outputPath)
-  local paths = {}
-  local preservedPrimaryPath = outputPath .. '.intermediate.tif'
-  moveOrCopyReplacing(primaryPath, preservedPrimaryPath)
-  table.insert(paths, preservedPrimaryPath)
-
-  if hdrAlternatePath then
-    local preservedHdrAltPath = outputPath .. '.intermediate-alternate-hdr.tif'
-    moveOrCopyReplacing(hdrAlternatePath, preservedHdrAltPath)
-    table.insert(paths, preservedHdrAltPath)
-  end
-  return paths
-end
-
----Invokes the Swift encoder with the rendered primary and optional alternate.
----@param command string
----@param primaryPath string
----@param hdrAlternatePath string?
----@param outputPath string
----@param workingDirectory string
----@return string message
-local function runEncoder(
-  command,
-  primaryPath,
-  hdrAlternatePath,
-  outputPath,
-  workingDirectory
+---@param plan ExportPlan
+---@param workingSpace WorkingSpace
+---@param sharedRenderSettings table<string, any>?
+---@param sourceRendition SourceRendition
+---@param outputRendition OutputRendition
+---@return RenditionJob job
+function RenditionJob.new(
+  plan,
+  workingSpace,
+  sharedRenderSettings,
+  sourceRendition,
+  outputRendition
 )
-  local encoderCommand = command .. ' --input-file ' .. shellQuote(primaryPath)
-  if hdrAlternatePath then
-    encoderCommand = encoderCommand
-      .. ' --hdr-input-file '
-      .. shellQuote(hdrAlternatePath)
+  return setmetatable({
+    plan = plan,
+    workingSpace = workingSpace,
+    sharedRenderSettings = sharedRenderSettings,
+    sourceRendition = sourceRendition,
+    outputRendition = outputRendition,
+  }, RenditionJob)
+end
+
+---Renders the alternate in a separate Lightroom export session.
+---Writes the rendered path to self.alternatePath.
+function RenditionJob:renderAlternate()
+  local profile = assert(self.plan.alternateProfile)
+  local sharedRenderSettings = assert(self.sharedRenderSettings)
+  local destinationPath = assert(self.workingSpace.alternatePath)
+
+  local exportSession = LrExportSession {
+    photosToExport = { self.sourceRendition.photo },
+    exportSettings = self.plan:makeAlternateSessionSettings(
+      sharedRenderSettings,
+      destinationPath
+    ),
+  }
+
+  exportSession:doExportOnCurrentTask()
+
+  for _, rendition in exportSession:renditions() do
+    local renderedPath = waitForRender(rendition, profile)
+    if renderedPath ~= destinationPath then
+      error(
+        'Lightroom rendered the alternate to an unexpected path: '
+          .. renderedPath
+          .. '; expected: '
+          .. destinationPath
+      )
+    end
+
+    self.alternatePath = renderedPath
+    return
   end
-  encoderCommand = encoderCommand .. ' ' .. shellQuote(outputPath)
-  local logPath = LrPathUtils.child(workingDirectory, 'encoder-output.log')
+
+  error('Lightroom did not produce an ' .. profile.label .. ' rendition')
+end
+
+---Invokes the Swift encoder and reports its captured diagnostics.
+---@param encoderCommand string
+function RenditionJob:runEncoder(encoderCommand)
+  local logPath = self.workingSpace.logPath
   local executedCommand = encoderCommand
     .. ' > '
     .. shellQuote(logPath)
     .. ' 2>&1'
   local status = LrTasks.execute(executedCommand)
   local encoderOutput = readEncoderOutput(logPath)
+
   if status ~= 0 then
     local exitCode = decodeExitStatus(status)
     local message = 'HEIC encoder failed with exit code '
@@ -362,91 +232,58 @@ local function runEncoder(
     end
     error(message)
   end
+
   if encoderOutput ~= '' then
     logger:info('HEIC encoder output:\n' .. encoderOutput)
   end
-  return 'Exported HEIC to ' .. outputPath
 end
 
----@class ExportOptions
----@field useHDR boolean
----@field keepIntermediateTIFFs boolean
-
----@class RenditionJob
----@field command string
----@field options ExportOptions
----@field profiles RenderProfiles
----@field sharedRenderSettings table<string, any>?
----@field workingDirectory string
----@field sourceRendition LightroomRendition
----@field outputRendition LightroomRendition
----@field primaryPath? string
----@field hdrAlternatePath? string
-
 ---Renders the requested inputs, optionally preserves them, and encodes output.
----@param job RenditionJob
+---Populates self.primaryPath and optionally self.alternatePath on success.
 ---@return string message
-local function processRenditionActual(job)
-  job.primaryPath = waitForRender(job.sourceRendition, job.profiles.primary)
+function RenditionJob:processActual()
+  self.primaryPath =
+    waitForRender(self.sourceRendition, self.plan.primaryProfile)
 
-  if job.options.useHDR then
-    if
-      not job.sharedRenderSettings
-      or not job.workingDirectory
-      or not job.profiles.hdrAlternate
-    then
-      error('Missing settings for the HDR alternate rendition')
-    end
-    job.hdrAlternatePath = renderAlternate(
-      job.sourceRendition.photo,
-      job.sharedRenderSettings,
-      job.workingDirectory,
-      job.profiles.hdrAlternate
-    )
+  if self.plan.renderAlternate then
+    self:renderAlternate()
   end
 
-  return runEncoder(
-    job.command,
-    job.primaryPath,
-    job.hdrAlternatePath,
-    job.outputRendition.destinationPath,
-    job.workingDirectory
+  local encoderCommand = self.plan:encoderCommand(
+    self.primaryPath,
+    self.alternatePath,
+    self.outputRendition.destinationPath
   )
+
+  self:runEncoder(encoderCommand)
+
+  return 'Exported HEIC to ' .. self.outputRendition.destinationPath
 end
 
 ---Runs one rendition job with exception-safe cleanup and completion reporting.
----@param job RenditionJob
 ---@return boolean processed
-local function processRendition(job)
+function RenditionJob:process()
   local callSucceeded, resultOrError = LrTasks.pcall(function()
-    return processRenditionActual(job)
+    return self:processActual()
   end)
+
   local processed = callSucceeded
   local message = resultOrError
   if not processed then
     message = 'Rendition processing failed: ' .. tostring(resultOrError)
   end
 
-  if job.options.keepIntermediateTIFFs and job.primaryPath then
-    local preserveCallSucceeded, pathsOrError = LrTasks.pcall(
-      preserveEncoderInputs,
-      job.primaryPath,
-      job.hdrAlternatePath,
-      job.outputRendition.destinationPath
-    )
-    if preserveCallSucceeded then
-      local preservedPathList = table.concat(pathsOrError, ', ')
-      logger:info('Preserved intermediate TIFFs: ' .. preservedPathList)
-      message = message .. '; intermediate TIFFs: ' .. preservedPathList
-    else
-      processed = false
-      message = message
-        .. '; could not preserve intermediate TIFFs: '
-        .. tostring(pathsOrError)
+  if self.plan.keepIntermediates and self.primaryPath then
+    local paths = { self.primaryPath }
+    if self.alternatePath then
+      table.insert(paths, self.alternatePath)
     end
+    local pathList = table.concat(paths, ', ')
+    logger:info('Intermediate TIFFs: ' .. pathList)
+    message = message .. '; intermediate TIFFs: ' .. pathList
   end
 
-  deleteDir(job.workingDirectory)
+  self.workingSpace:cleanup()
 
   if processed then
     logger:info(message)
@@ -454,97 +291,73 @@ local function processRendition(job)
     logger:error(message)
   end
 
-  job.outputRendition:renditionIsDone(processed, message)
+  self.outputRendition:renditionIsDone(processed, message)
   return processed
 end
 
----Processes all Lightroom renditions and satisfies each output rendition.
+---Processes all Lightroom renditions using one immutable export plan.
+---
+---1. Allocates one isolated WorkingSpace during filterSettings.
+---2. Waits for the primary and renders an alternate when required.
+---3. Invokes the encoder, cleans temporary files, and reports completion.
 ---@param functionContext any
 ---@param filterContext any
 function Processor.postProcessRenderedPhotos(functionContext, filterContext)
   local p = filterContext.propertyTable
-  local colorSpace = Model.colorSpaceFor(p.HEICColorSpace)
-  if p.HEICUseHDR and not colorSpace.hdr then
-    p.HEICColorSpace = 'SRGB'
-    colorSpace = Model.colorSpaces.SRGB
-  end
-  local profiles = makeRenderProfiles(colorSpace)
-
-  ---@type ExportOptions
-  local exportOptions = {
-    useHDR = p.HEICUseHDR,
-    keepIntermediateTIFFs = p.HEICKeepIntermediateTIFFs,
-  }
-
   local converterPath = LrPathUtils.child(
     _PLUGIN.path,
     'ConverterWrapper.app/Contents/MacOS/ConvertToHeic'
   )
-  local cmd = shellQuote(converterPath)
-  if p.HEICUseSizeLimit then
-    cmd = (
-      cmd
-      .. ' --size-limit '
-      .. (p.HEICSizeLimit * 1000)
-      .. ' --min-quality '
-      .. (p.HEICMinQuality / 100)
-      .. ' --max-quality '
-      .. (p.HEICMaxQuality / 100)
-    )
-  else
-    cmd = cmd .. ' --quality ' .. (p.HEICQuality / 100)
-  end
-  if p.HEICUseHDR then
-    cmd = cmd .. ' --hdr-output --gain-map-channels rgb'
-  end
-  local outputBitDepth = p.HEICBitDepth or 10
-  cmd = cmd
-    .. ' --output-bit-depth '
-    .. tostring(outputBitDepth)
-    .. ' --output-color-space '
-    .. shellQuote(colorSpace.output)
+  local plan = ExportPlan.new(p, converterPath)
 
   local sharedRenderSettingsByRendition = {}
-  local workingDirectoriesByRendition = {}
+  local workingSpacesByRendition = {}
   functionContext:addCleanupHandler(function()
-    for _, dir in pairs(workingDirectoriesByRendition) do
-      deleteDir(dir)
+    for _, workingSpace in pairs(workingSpacesByRendition) do
+      workingSpace:cleanup()
     end
   end)
 
   local renditionOptions = {
     filterSettings = function(renditionToSatisfy, exportSettings)
-      -- This makes the plug-in own both intermediate files and their cleanup.
-      local dir = createWorkingDirectory()
-      workingDirectoriesByRendition[renditionToSatisfy] = dir
+      local outputPath = renditionToSatisfy.destinationPath
+      local alternateFileSuffix = plan.alternateProfile
+        and plan.alternateProfile.fileSuffix
+      local workingSpace = WorkingSpace.new(
+        outputPath,
+        plan.keepIntermediates,
+        alternateFileSuffix
+      )
+      workingSpacesByRendition[renditionToSatisfy] = workingSpace
       sharedRenderSettingsByRendition[renditionToSatisfy] =
         captureSharedRenderSettings(exportSettings)
-      applyRenderProfile(exportSettings, profiles.primary)
-      return LrPathUtils.child(dir, 'primary.tif')
+      plan:applyPrimaryRenderSettings(exportSettings)
+      return workingSpace.primaryPath
     end,
   }
 
   logger:info('Starting rendering of originals')
+
   for sourceRendition, renditionToSatisfy in
     filterContext:renditions(renditionOptions)
   do
     logger:info('Processing rendition')
-    ---@type RenditionJob
-    local job = {
-      command = cmd,
-      options = exportOptions,
-      profiles = profiles,
-      sharedRenderSettings = sharedRenderSettingsByRendition[renditionToSatisfy],
-      workingDirectory = workingDirectoriesByRendition[renditionToSatisfy],
-      sourceRendition = sourceRendition,
-      outputRendition = renditionToSatisfy,
-    }
-    local processed = processRendition(job)
+
+    local job = RenditionJob.new(
+      plan,
+      workingSpacesByRendition[renditionToSatisfy],
+      sharedRenderSettingsByRendition[renditionToSatisfy],
+      sourceRendition,
+      renditionToSatisfy
+    )
+
+    local processed = job:process()
     sharedRenderSettingsByRendition[renditionToSatisfy] = nil
-    workingDirectoriesByRendition[renditionToSatisfy] = nil
+    workingSpacesByRendition[renditionToSatisfy] = nil
     if not processed then
       break
     end
+
   end
 end
 

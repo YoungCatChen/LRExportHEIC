@@ -29,24 +29,88 @@ final class LRExportHEICTests: XCTestCase {
   }
 
   #if SWIFT_PACKAGE
-    func testParsesGainMapChannelsBeforeOutputFile() throws {
+    func testParsesSDRInput() throws {
       var input = CommandInput(arguments: [
         "ConvertToHeic",
         "--quality", "0.75",
-        "--hdr-output",
-        "--gain-map-channels", "rgb",
         "--output-bit-depth", "8",
         "--output-color-space", "DisplayP3",
-        "--input-file", "primary.tif",
-        "--hdr-input-file", "hdr.tif",
+        "--sdr-from", "primary.tif",
         "output.heic",
       ])
 
       let signature = try ExportHEICCommand.ExportHEICCommandSignature(
         from: &input)
+      try signature.checkOptions()
 
-      XCTAssertEqual(signature.gainMapChannelsName, "rgb")
+      XCTAssertEqual(signature.sdrFrom, "primary.tif")
+      XCTAssertNil(signature.hdrFrom)
       XCTAssertEqual(signature.outputFile, "output.heic")
+    }
+
+    func testParsesHDRInput() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "--output-bit-depth", "10",
+        "--hdr-from", "hdr.tif",
+        "output.heic",
+      ])
+
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+      try signature.checkOptions()
+
+      XCTAssertNil(signature.sdrFrom)
+      XCTAssertEqual(signature.hdrFrom, "hdr.tif")
+      XCTAssertEqual(signature.outputFile, "output.heic")
+    }
+
+    func testParsesAdaptiveHDRInputs() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "--output-bit-depth", "10",
+        "--output-color-space", "DisplayP3",
+        "--sdr-from", "sdr.tif",
+        "--hdr-from", "hdr.tif",
+        "output.heic",
+      ])
+
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+      try signature.checkOptions()
+
+      XCTAssertEqual(signature.sdrFrom, "sdr.tif")
+      XCTAssertEqual(signature.hdrFrom, "hdr.tif")
+      XCTAssertEqual(signature.outputColorSpaceName, "DisplayP3")
+    }
+
+    func testRejectsMissingRendition() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "output.heic",
+      ])
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+
+      XCTAssertThrowsError(try signature.checkOptions())
+    }
+
+    func testAcceptsPQOutputColorSpaceForHDRPrimary() throws {
+      var input = CommandInput(arguments: [
+        "ConvertToHeic",
+        "--quality", "0.75",
+        "--output-color-space", "DisplayP3_PQ",
+        "--hdr-from", "hdr.tif",
+        "output.heic",
+      ])
+      let signature = try ExportHEICCommand.ExportHEICCommandSignature(
+        from: &input)
+
+      try signature.checkOptions()
+      XCTAssertEqual(signature.outputColorSpaceName, "DisplayP3_PQ")
     }
   #endif
 
@@ -54,7 +118,7 @@ final class LRExportHEICTests: XCTestCase {
     let outputURL = temporaryDirectory.appendingPathComponent("sdr-8.heic")
 
     try writeHEIF(
-      makeRequest(outputBitDepth: .eight),
+      try makeRequest(outputBitDepth: .eight),
       to: outputURL,
       quality: 0.9,
       verbose: false)
@@ -67,13 +131,35 @@ final class LRExportHEICTests: XCTestCase {
     let outputURL = temporaryDirectory.appendingPathComponent("sdr-10.heic")
 
     try writeHEIF(
-      makeRequest(outputBitDepth: .ten),
+      try makeRequest(outputBitDepth: .ten),
       to: outputURL,
       quality: 0.9,
       verbose: false)
 
     XCTAssertEqual(try primaryDepth(of: outputURL), 10)
     XCTAssertNil(try gainMapDescription(of: outputURL))
+  }
+
+  func testWritesNativeHDRHEIF() throws {
+    let outputURL = temporaryDirectory.appendingPathComponent("native-hdr.heic")
+    let pq = try XCTUnwrap(CGColorSpace(name: CGColorSpace.itur_2100_PQ))
+    let request = HEIFEncodingRequest(
+      representation: .hdr(makeHDRImage()),
+      outputBitDepth: .ten,
+      outputColorSpace: pq)
+
+    try writeHEIF(
+      request,
+      to: outputURL,
+      quality: 0.9,
+      verbose: false)
+
+    XCTAssertEqual(try primaryDepth(of: outputURL), 10)
+    XCTAssertNil(try gainMapDescription(of: outputURL))
+    let properties = try primaryProperties(of: outputURL)
+    let profileName = try XCTUnwrap(
+      properties[kCGImagePropertyProfileName] as? String)
+    XCTAssertTrue(profileName.localizedCaseInsensitiveContains("PQ"))
   }
 
   func testWritesAdaptiveHDRWithRGBGainMap() throws {
@@ -83,7 +169,7 @@ final class LRExportHEICTests: XCTestCase {
     let outputURL = temporaryDirectory.appendingPathComponent("hdr.heic")
 
     try writeHEIF(
-      makeRequest(
+      try makeRequest(
         outputBitDepth: .ten,
         hdrImage: makeHDRImage()),
       to: outputURL,
@@ -97,27 +183,46 @@ final class LRExportHEICTests: XCTestCase {
     XCTAssertEqual(gainMap.pixelFormat, fourCC("420f"))
   }
 
-  func testWritesEightBitAdaptiveHDRWithMonochromeGainMap() throws {
+  func testWritesEightBitAdaptiveHDR() throws {
     guard #available(macOS 15.0, *) else {
       throw XCTSkip("Adaptive HDR encoding requires macOS 15 or later")
     }
-    let outputURL = temporaryDirectory.appendingPathComponent(
-      "hdr-8-mono.heic")
+    let outputURL = temporaryDirectory.appendingPathComponent("hdr-8.heic")
 
     try writeHEIF(
-      makeRequest(
+      try makeRequest(
         outputBitDepth: .eight,
-        hdrImage: makeHDRImage(),
-        gainMapChannels: .monochrome),
+        hdrImage: makeHDRImage()),
       to: outputURL,
       quality: 0.9,
       verbose: false)
 
     XCTAssertEqual(try primaryDepth(of: outputURL), 8)
-    let gainMap = try XCTUnwrap(gainMapDescription(of: outputURL))
-    XCTAssertEqual(gainMap.width, 64)
-    XCTAssertEqual(gainMap.height, 48)
-    XCTAssertEqual(gainMap.pixelFormat, fourCC("L008"))
+    XCTAssertNotNil(try gainMapDescription(of: outputURL))
+  }
+
+  func testRejectsMismatchedAdaptiveHDRGeometry() throws {
+    guard #available(macOS 15.0, *) else {
+      throw XCTSkip("Adaptive HDR encoding requires macOS 15 or later")
+    }
+    let outputURL = temporaryDirectory.appendingPathComponent("mismatch.heic")
+    let sdr = CIImage(color: .red).cropped(
+      to: CGRect(x: 0, y: 0, width: 64, height: 48))
+    let hdr = CIImage(color: .white).cropped(
+      to: CGRect(x: 0, y: 0, width: 32, height: 24))
+    let request = HEIFEncodingRequest(
+      representation: .adaptiveHDR(
+        sdrPrimary: sdr,
+        hdrAlternate: hdr),
+      outputBitDepth: .ten,
+      outputColorSpace: sRGB)
+
+    XCTAssertThrowsError(
+      try writeHEIF(
+        request,
+        to: outputURL,
+        quality: 0.9,
+        verbose: false))
   }
 
   func testSizeLimitedAdaptiveHDRPreservesEncodingMode() throws {
@@ -128,7 +233,7 @@ final class LRExportHEICTests: XCTestCase {
       "size-limited-hdr.heic")
 
     try writeSizeLimitedHEIF(
-      makeRequest(
+      try makeRequest(
         outputBitDepth: .ten,
         hdrImage: makeHDRImage()),
       to: outputURL,
@@ -145,15 +250,14 @@ final class LRExportHEICTests: XCTestCase {
     let outputURL = temporaryDirectory.appendingPathComponent("existing.heic")
     let originalData = Data("existing file".utf8)
     try originalData.write(to: outputURL)
+    let request = HEIFEncodingRequest(
+      representation: .sdr(CIImage.empty()),
+      outputBitDepth: .eight,
+      outputColorSpace: sRGB)
 
     XCTAssertThrowsError(
       try writeHEIF(
-        HEIFEncodingRequest(
-          primary: PrimaryRendition(
-            image: CIImage.empty(),
-            outputBitDepth: .eight,
-            outputColorSpace: sRGB),
-          dynamicRange: .sdr),
+        request,
         to: outputURL,
         quality: 0.9,
         verbose: false))
@@ -197,31 +301,33 @@ final class LRExportHEICTests: XCTestCase {
 
   private func makeRequest(
     outputBitDepth: HEIFBitDepth,
-    hdrImage: CIImage? = nil,
-    gainMapChannels: GainMapChannels = .rgb
+    hdrImage: CIImage? = nil
   ) throws -> HEIFEncodingRequest {
-    let dynamicRange: DynamicRangeRepresentation
+    let sdrImage = try makeSixteenBitSDRImage()
+    let representation: HEIFRepresentation
     if let hdrImage {
-      dynamicRange = .adaptiveHDR(
-        alternate: HDRRendition(image: hdrImage),
-        gainMap: GainMapOptions(channels: gainMapChannels))
+      representation = .adaptiveHDR(
+        sdrPrimary: sdrImage,
+        hdrAlternate: hdrImage)
     } else {
-      dynamicRange = .sdr
+      representation = .sdr(sdrImage)
     }
     return HEIFEncodingRequest(
-      primary: PrimaryRendition(
-        image: try makeSixteenBitSDRImage(),
-        outputBitDepth: outputBitDepth,
-        outputColorSpace: sRGB),
-      dynamicRange: dynamicRange)
+      representation: representation,
+      outputBitDepth: outputBitDepth,
+      outputColorSpace: sRGB)
   }
 
   private func primaryDepth(of url: URL) throws -> Int {
+    let properties = try primaryProperties(of: url)
+    return try XCTUnwrap(properties[kCGImagePropertyDepth] as? Int)
+  }
+
+  private func primaryProperties(of url: URL) throws -> [CFString: Any] {
     let source = try imageSource(for: url)
-    let properties = try XCTUnwrap(
+    return try XCTUnwrap(
       CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
         as? [CFString: Any])
-    return try XCTUnwrap(properties[kCGImagePropertyDepth] as? Int)
   }
 
   private func gainMapDescription(

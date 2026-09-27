@@ -3,6 +3,7 @@
 ---@field sdr string
 ---@field hdr? string
 ---@field output string
+---@field hdrOutput? string
 
 local Model = {}
 
@@ -13,12 +14,14 @@ Model.colorSpaces = {
     sdr = 'sRGB',
     hdr = 'sRGB_hdr',
     output = 'SRGB',
+    hdrOutput = 'ITUR_709_PQ',
   },
   DisplayP3 = {
     title = 'Display P3',
     sdr = 'DisplayP3',
     hdr = 'p3_hdr',
     output = 'DisplayP3',
+    hdrOutput = 'DisplayP3_PQ',
   },
   AdobeRGB1998 = {
     title = 'Adobe RGB',
@@ -30,6 +33,7 @@ Model.colorSpaces = {
     sdr = 'Rec2020',
     hdr = 'Rec2020_hdr',
     output = 'ITUR_2020',
+    hdrOutput = 'ITUR_2100_PQ',
   },
 }
 
@@ -49,6 +53,24 @@ Model.hdrColorSpaceItems = {
   { title = Model.colorSpaces.Rec2020.title, value = 'Rec2020' },
 }
 
+Model.bitDepthItems = {
+  { title = '8 bits/component', value = 8 },
+  { title = '10 bits/component', value = 10 },
+}
+
+Model.hdrModes = {
+  sdrAndGain = 'sdrAndGain',
+  hdrOnly = 'hdrOnly',
+}
+
+Model.hdrModeItems = {
+  {
+    title = 'SDR primary + HDR gain map (Recommended)',
+    value = Model.hdrModes.sdrAndGain,
+  },
+  { title = 'HDR primary only', value = Model.hdrModes.hdrOnly },
+}
+
 Model.exportPresetFields = {
   { key = 'HEICQuality', default = 75 },
   { key = 'HEICUseSizeLimit', default = false },
@@ -58,7 +80,8 @@ Model.exportPresetFields = {
   { key = 'HEICColorSpace', default = 'SRGB' },
   { key = 'HEICBitDepth', default = 10 },
   { key = 'HEICUseHDR', default = false },
-  { key = 'HEICKeepIntermediateTIFFs', default = false },
+  { key = 'HEICHDRMode', default = Model.hdrModes.sdrAndGain },
+  { key = 'HEICKeepIntermediates', default = false },
 }
 
 ---@param value string

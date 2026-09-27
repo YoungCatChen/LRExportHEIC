@@ -98,6 +98,12 @@ private struct ParsedArguments {
   var positionals: [String] = []
 }
 
+private struct GainMapMetadataSummary {
+  let baseHeadroom: Double
+  let alternateHeadroom: Double
+  let channelCount: Int
+}
+
 private struct ImageDocument {
   let url: URL
   let kind: ImageKind
@@ -131,21 +137,38 @@ private final class HDRImageAnalyzer {
         throw ToolError.unsupported(
           "Adaptive HDR expansion requires macOS 14 or later")
       }
-      let hdrOptions: [CIImageOption: Any] = [
-        .applyOrientationProperty: true,
-        .expandToHDR: true,
-      ]
-      guard let hdr = CIImage(contentsOf: url, options: hdrOptions) else {
-        throw ToolError.cannotReadImage(
-          "Could not expand adaptive HDR image: \(url.path)")
+      if #available(macOS 15.0, *),
+        let metadata = gainMapMetadata(gainMap)
+      {
+        let baseIsHDR = metadata.baseHeadroom > metadata.alternateHeadroom
+        let alternate =
+          baseIsHDR
+          ? base.applyingGainMap(gainMap, headroom: 1)
+          : base.applyingGainMap(gainMap)
+        return ImageDocument(
+          url: url,
+          kind: .adaptiveHDR,
+          base: base,
+          sdr: baseIsHDR ? alternate : base,
+          hdr: baseIsHDR ? base : alternate,
+          gainMap: gainMap)
+      } else {
+        let hdrOptions: [CIImageOption: Any] = [
+          .applyOrientationProperty: true,
+          .expandToHDR: true,
+        ]
+        guard let hdr = CIImage(contentsOf: url, options: hdrOptions) else {
+          throw ToolError.cannotReadImage(
+            "Could not expand adaptive HDR image: \(url.path)")
+        }
+        return ImageDocument(
+          url: url,
+          kind: .adaptiveHDR,
+          base: base,
+          sdr: base,
+          hdr: hdr,
+          gainMap: gainMap)
       }
-      return ImageDocument(
-        url: url,
-        kind: .adaptiveHDR,
-        base: base,
-        sdr: base,
-        hdr: hdr,
-        gainMap: gainMap)
     }
 
     if contentHeadroom(base) > 1.0001 || maximumLinearComponent(base) > 1.0001 {
@@ -288,7 +311,6 @@ private final class HDRImageAnalyzer {
     sdrPath: String,
     hdrPath: String,
     outputPath: String,
-    rgbGainMap: Bool,
     outputBitDepth: HEIFBitDepth,
     quality: Double,
     force: Bool
@@ -314,16 +336,14 @@ private final class HDRImageAnalyzer {
     let outputURL = expandedURL(outputPath)
     try refuseOverwrite(outputURL, force: force)
     do {
+      let request = HEIFEncodingRequest(
+        representation: .adaptiveHDR(
+          sdrPrimary: sdr,
+          hdrAlternate: hdr),
+        outputBitDepth: outputBitDepth,
+        outputColorSpace: sRGB)
       try writeHEIF(
-        HEIFEncodingRequest(
-          primary: PrimaryRendition(
-            image: sdr,
-            outputBitDepth: outputBitDepth,
-            outputColorSpace: sRGB),
-          dynamicRange: .adaptiveHDR(
-            alternate: HDRRendition(image: hdr),
-            gainMap: GainMapOptions(
-              channels: rgbGainMap ? .rgb : .monochrome))),
+        request,
         to: outputURL,
         quality: quality,
         verbose: false)
@@ -415,6 +435,9 @@ private final class HDRImageAnalyzer {
   }
 
   private func gainMapChannelCount(_ gainMap: CIImage) -> Int? {
+    if #available(macOS 15.0, *), let metadata = gainMapMetadata(gainMap) {
+      return metadata.channelCount
+    }
     let key = kCGImageAuxiliaryDataInfoMetadata as String
     guard let metadata = gainMap.properties[key] else {
       return nil
@@ -424,6 +447,56 @@ private final class HDRImageAnalyzer {
     if count >= 3 { return 3 }
     if count == 1 { return 1 }
     return nil
+  }
+
+  @available(macOS 15.0, *)
+  private func gainMapMetadata(
+    _ gainMap: CIImage
+  ) -> GainMapMetadataSummary? {
+    let key = kCGImageAuxiliaryDataInfoMetadata as String
+    guard let value = gainMap.properties[key],
+      CFGetTypeID(value as CFTypeRef) == CGImageMetadataGetTypeID()
+    else {
+      return nil
+    }
+    let metadata = value as! CGImageMetadata
+    func number(_ path: String) -> Double? {
+      guard
+        let value = CGImageMetadataCopyStringValueWithPath(
+          metadata,
+          nil,
+          path as CFString) as String?
+      else {
+        return nil
+      }
+      return Double(value)
+    }
+    guard
+      let baseHeadroom = number("HDRToneMap:BaseHeadroom"),
+      let alternateHeadroom = number("HDRToneMap:AlternateHeadroom")
+    else {
+      return nil
+    }
+    var channelCount = 0
+    for index in 0..<3 {
+      let path = "HDRToneMap:ChannelMetadata[\(index)].GainMapMin"
+      guard
+        CGImageMetadataCopyTagWithPath(
+          metadata,
+          nil,
+          path as CFString) != nil
+      else {
+        break
+      }
+      channelCount += 1
+    }
+    guard channelCount == 1 || channelCount == 3 else {
+      return nil
+    }
+    return GainMapMetadataSummary(
+      baseHeadroom: baseHeadroom,
+      alternateHeadroom: alternateHeadroom,
+      channelCount: channelCount)
   }
 
   private func pixelStatistics(_ image: CIImage) throws -> PixelStatistics {
@@ -720,7 +793,7 @@ private func usage() -> String {
     hdr-image-tool inspect [--json] IMAGE
     hdr-image-tool extract [--force] --output-dir DIR IMAGE
     hdr-image-tool compare [--json] [--rendition auto|sdr|hdr|both] IMAGE_A IMAGE_B
-    hdr-image-tool encode-heic [--force] --sdr IMAGE --hdr IMAGE --output FILE [--gain-map mono|rgb] [--output-bit-depth 8|10] [--quality 0.0...1.0]
+    hdr-image-tool encode-heic [--force] --sdr IMAGE --hdr IMAGE --output FILE [--output-bit-depth 8|10] [--quality 0.0...1.0]
     hdr-image-tool verify-heic [--json] --sdr-reference IMAGE --hdr-reference IMAGE OUTPUT
 
   Comparisons never resize, crop, or implicitly tone-map an image.
@@ -801,7 +874,7 @@ private func run() throws {
     let parsed = try parseArguments(
       arguments,
       valueOptions: [
-        "sdr", "hdr", "output", "gain-map", "output-bit-depth", "quality",
+        "sdr", "hdr", "output", "output-bit-depth", "quality",
       ],
       allowedFlags: ["force"])
     guard parsed.positionals.isEmpty,
@@ -811,10 +884,6 @@ private func run() throws {
     else {
       throw ToolError.invalidArguments(
         "encode-heic requires --sdr, --hdr, and --output")
-    }
-    let gainMap = parsed.options["gain-map"] ?? "rgb"
-    guard gainMap == "rgb" || gainMap == "mono" else {
-      throw ToolError.invalidArguments("Gain map must be mono or rgb")
     }
     let qualityText = parsed.options["quality"] ?? "0.9"
     guard let quality = Double(qualityText) else {
@@ -831,7 +900,6 @@ private func run() throws {
       sdrPath: sdr,
       hdrPath: hdr,
       outputPath: output,
-      rgbGainMap: gainMap == "rgb",
       outputBitDepth: outputBitDepth,
       quality: quality,
       force: parsed.flags.contains("force"))

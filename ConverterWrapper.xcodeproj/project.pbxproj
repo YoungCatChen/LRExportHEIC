@@ -12,6 +12,8 @@
 		0C6122952B64A7F900C51150 /* QualitySearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79762B55C02D00E05595 /* QualitySearch.swift */; };
 		0C6122982B64A97B00C51150 /* QualitySearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79762B55C02D00E05595 /* QualitySearch.swift */; };
 		A10000032B55C02D00E05595 /* HEIFEncoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000012B55C02D00E05595 /* HEIFEncoding.swift */; };
+		A100000C2C20000000E05595 /* HEIFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000092C20000000E05595 /* HEIFWriter.swift */; };
+		A100000D2C20000000E05595 /* HEIFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000092C20000000E05595 /* HEIFWriter.swift */; };
 		A10000042B55C02D00E05595 /* WriteSizeLimitedHEIF.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35C79792B55C02D00E05595 /* WriteSizeLimitedHEIF.swift */; };
 		F30AC0362B55B9A10062A2FD /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30AC0352B55B9A10062A2FD /* main.swift */; };
 		F3563CF22B55B76F002CB007 /* ConverterWrapperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3563CF12B55B76F002CB007 /* ConverterWrapperApp.swift */; };
@@ -77,6 +79,7 @@
 		F35C79752B55C02D00E05595 /* EnhancedOptions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EnhancedOptions.swift; sourceTree = "<group>"; };
 		F35C79762B55C02D00E05595 /* QualitySearch.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QualitySearch.swift; sourceTree = "<group>"; };
 		A10000012B55C02D00E05595 /* HEIFEncoding.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HEIFEncoding.swift; sourceTree = "<group>"; };
+		A10000092C20000000E05595 /* HEIFWriter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HEIFWriter.swift; sourceTree = "<group>"; };
 		F35C79782B55C02D00E05595 /* ForwardPipe.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ForwardPipe.swift; sourceTree = "<group>"; };
 		F35C79792B55C02D00E05595 /* WriteSizeLimitedHEIF.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WriteSizeLimitedHEIF.swift; sourceTree = "<group>"; };
 		F35C79842B55C18400E05595 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -151,6 +154,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000012B55C02D00E05595 /* HEIFEncoding.swift */,
+				A10000092C20000000E05595 /* HEIFWriter.swift */,
 			);
 			path = HEIFEncoding;
 			sourceTree = "<group>";
@@ -322,6 +326,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000032B55C02D00E05595 /* HEIFEncoding.swift in Sources */,
+				A100000D2C20000000E05595 /* HEIFWriter.swift in Sources */,
 				0C6122982B64A97B00C51150 /* QualitySearch.swift in Sources */,
 				0C61226E2B64969800C51150 /* QualitySearchTests.swift in Sources */,
 				0C61226D2B64969800C51150 /* LRExportHEICTests.swift in Sources */,
@@ -336,6 +341,7 @@
 				0C6122952B64A7F900C51150 /* QualitySearch.swift in Sources */,
 				F35C797A2B55C02D00E05595 /* ExportHEICCommand.swift in Sources */,
 				F35C797D2B55C02D00E05595 /* HEIFEncoding.swift in Sources */,
+				A100000C2C20000000E05595 /* HEIFWriter.swift in Sources */,
 				F35C797F2B55C02D00E05595 /* WriteSizeLimitedHEIF.swift in Sources */,
 				F35C797B2B55C02D00E05595 /* EnhancedOptions.swift in Sources */,
 				F30AC0362B55B9A10062A2FD /* main.swift in Sources */,

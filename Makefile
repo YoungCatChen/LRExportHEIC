@@ -151,6 +151,7 @@ fmt:
 
 test:
 	swift test
+	scripts/test_update_version.sh
 
 clean: clean-debug clean-release
 

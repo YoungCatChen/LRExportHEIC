@@ -13,7 +13,7 @@ trap 'rm -f "$source_keys" "$translation_keys"' EXIT
 iconv -f UTF-8 -t UTF-8 "$dictionary" >/dev/null
 
 invalid_lines=$(
-  rg --line-number --invert-match \
+  grep -Env \
     '^("\$\$\$/LRExportHEIC/[A-Za-z0-9/]+=.+")?$' \
     "$dictionary" || true
 )
@@ -23,14 +23,12 @@ if [[ -n "$invalid_lines" ]]; then
   exit 1
 fi
 
-rg --no-filename --only-matching \
-  '\$\$\$/LRExportHEIC/[A-Za-z0-9/]+' \
-  "$repo_root/LRPlugin" \
-  --glob '*.lua' \
-  --glob '*.lua.template' \
+find "$repo_root/LRPlugin" -type f \
+  \( -name '*.lua' -o -name '*.lua.template' \) \
+  -exec grep -Eho '\$\$\$/LRExportHEIC/[A-Za-z0-9/]+' {} + \
   | sort -u >"$source_keys"
 
-rg --no-filename --only-matching \
+grep -Eo \
   '\$\$\$/LRExportHEIC/[A-Za-z0-9/]+' \
   "$dictionary" \
   | sort >"$translation_keys"

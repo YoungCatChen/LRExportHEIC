@@ -7,8 +7,8 @@ implementation behavior.
 
 Detailed implementation notes are available in:
 
-- [ImageIO HEIF Authoring](imageio_heif.md)
-- [Lightroom HDR TIFF Structure](lightroom_hdr_tiff.md)
+- [ImageIO HEIF Authoring](imageio-heif.md)
+- [Lightroom HDR TIFF Structure](lightroom-hdr-tiff.md)
 
 Unless explicitly stated otherwise:
 
@@ -130,7 +130,7 @@ more of the gain map until reaching the encoded alternate rendition.
 ISO 21496-1 keeps `decoded_gain` oriented from SDR toward HDR. If the base is
 HDR and the alternate is SDR, the headroom ordering makes `weight` negative;
 the gain values themselves do not need to be negated. See
-[ImageIO HEIF Authoring](imageio_heif.md#inverse-gain-maps) for the corresponding
+[ImageIO HEIF Authoring](imageio-heif.md#inverse-gain-maps) for the corresponding
 metadata transformation.
 
 This makes the base rendition part of the authored image, not merely a decoder
@@ -438,7 +438,7 @@ Both comparisons are required.
 
 The recipes below use widely available command-line tools and public platform
 APIs. Project-specific automation is documented separately in
-[HDR image tools](../Tools/README.md).
+[HDR image tools](../../Tools/README.md).
 
 ## From concepts to practice
 
@@ -842,7 +842,7 @@ This repository provides `Tools/analyze_hdr_image.sh` and `hdr-image-tool` to
 automate the general process above. They are conveniences, not the source of the
 model. Their outputs map directly to the container, decode, color-conversion,
 and metric steps described in this document. See
-[HDR image tools](../Tools/README.md) for their interface.
+[HDR image tools](../../Tools/README.md) for their interface.
 
 ## Common pitfalls
 

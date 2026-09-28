@@ -6,9 +6,9 @@ project's development system. Framework behavior can change between operating
 system releases, so every output must be inspected and decoded after writing.
 
 For gain-map terminology and validation principles, see
-[HDR and Gain Map Reference](hdr_gain_map_reference.md). For an observed
+[HDR and Gain Map Reference](hdr-gain-maps.md). For an observed
 Lightroom private gain-map container, see
-[Lightroom HDR TIFF](lightroom_hdr_tiff.md).
+[Lightroom HDR TIFF](lightroom-hdr-tiff.md).
 
 ## Representation choices
 

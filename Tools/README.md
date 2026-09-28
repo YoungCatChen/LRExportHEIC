@@ -70,5 +70,5 @@ The wrapper uses `file` and, when available, `exiftool`, `heif-info`, and
 `jxlinfo` to add container-specific information. The Swift executable itself
 does not require those optional command-line tools.
 
-See [HDR and Gain Map Reference](../docs/hdr_gain_map_reference.md) for the
+See [HDR and Gain Map Reference](../docs/reference/hdr-gain-maps.md) for the
 underlying representation, color-management, and validation model.

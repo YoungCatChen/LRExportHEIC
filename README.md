@@ -4,7 +4,7 @@ _(Forked from [milch/LRExportHEIC](https://github.com/milch/LRExportHEIC).)_
 
 A plugin to allow Lightroom Classic to export HEIC / HEIF files.
 
-![Example Export Window](docs/export-window.png)
+![Example Export Window](docs/assets/export-window.png)
 
 ### Why HEIC/HEIF over JPEG?
 
@@ -20,10 +20,6 @@ There are two main benefits of HEIC/HEIF:
   at the same file size[^2].
 - 10-bit encoding support, allowing for a wider dynamic range and giving more
   latitude for further edits than the 8-bit JPEG.
-
-See [HDR and Gain Map Reference](docs/hdr_gain_map_reference.md) for the HDR
-representation, gain-map, color-management, and validation model used by this
-project.
 
 ## Installation
 
@@ -46,18 +42,15 @@ project.
   regular File Settings panel is unused at this point; all settings made in
   that panel will be overridden by any setting you choose in the
   “HEIC settings” panel.
-- Adjust the settings based on quality or file-size.
-- Optionally enable `Export HDR HEIC` for HDR photos. The HDR mode can store an
-  SDR primary with an HDR gain map or a native HDR primary without a map. sRGB,
-  Display P3, and Rec. 2020 are available in HDR mode. Adobe RGB remains
-  available for SDR export.
-- Enable `Keep intermediate TIFFs` to preserve Lightroom's rendered inputs as
-  `<filename>.intermediate.tif` and, when applicable,
-  `<filename>.intermediate-alternate-hdr.tif` beside the output file.
+- Adjust the settings based on desired quality or file-size. Optionally, adjust
+  the bit depth and color space settings.
+- Optionally enable `HDR Output` for HDR (high dynamic range) photos. The HDR
+  mode can store an SDR (standard dynamic range) primary with an HDR gain map,
+  or a native HDR primary without a map.
 
-![Example image quality settings](docs/by-quality.png)
+![Example image quality settings](docs/assets/by-quality.png)
 
-![Example file-size settings](docs/by-filesize.png)
+![Example file-size settings](docs/assets/by-filesize.png)
 
 - Click `Export`. Your export should proceed like normal, and you will find
   your files at the location you selected.
@@ -68,7 +61,7 @@ project.
 The plugin also adds a new item under “Export To” named “Export HEIC”.
 This does nothing more than hide the original “File Settings” panel so
 you don't accidentally make changes there instead of the “HEIC settings” panel.
-However, this is entirely optional and only a cosmetic change.
+However, this is entirely optional and is only a cosmetic change.
 
 ## Compatibility
 

@@ -54,8 +54,14 @@ Model.hdrColorSpaceItems = {
 }
 
 Model.bitDepthItems = {
-  { title = '8 bits/component', value = 8 },
-  { title = '10 bits/component', value = 10 },
+  {
+    title = LOC '$$$/LRExportHEIC/BitDepth/8=8 bits/component',
+    value = 8,
+  },
+  {
+    title = LOC '$$$/LRExportHEIC/BitDepth/10=10 bits/component',
+    value = 10,
+  },
 }
 
 Model.hdrModes = {
@@ -65,10 +71,13 @@ Model.hdrModes = {
 
 Model.hdrModeItems = {
   {
-    title = 'SDR primary + HDR gain map (Recommended)',
+    title = LOC '$$$/LRExportHEIC/HDRMode/Adaptive=SDR primary + HDR gain map (Recommended)',
     value = Model.hdrModes.sdrAndGain,
   },
-  { title = 'HDR primary only', value = Model.hdrModes.hdrOnly },
+  {
+    title = LOC '$$$/LRExportHEIC/HDRMode/Native=HDR primary only',
+    value = Model.hdrModes.hdrOnly,
+  },
 }
 
 Model.exportPresetFields = {

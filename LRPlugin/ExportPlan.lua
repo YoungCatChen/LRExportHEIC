@@ -73,12 +73,30 @@ end
 ---@return RenderProfile? alternateProfile
 local function makeRenderProfiles(colorSpace, useHDR, hdrMode)
   if not useHDR then
-    return makeSDRTIFFProfile(colorSpace.sdr, 'primary SDR', nil), nil
+    return makeSDRTIFFProfile(
+      colorSpace.sdr,
+      LOC '$$$/LRExportHEIC/Rendition/PrimarySDR=primary SDR',
+      nil
+    ),
+      nil
   elseif hdrMode == Model.hdrModes.hdrOnly then
-    return makeHDRTIFFProfile(colorSpace.hdr, 'primary HDR', nil), nil
+    return makeHDRTIFFProfile(
+      colorSpace.hdr,
+      LOC '$$$/LRExportHEIC/Rendition/PrimaryHDR=primary HDR',
+      nil
+    ),
+      nil
   end
-  return makeSDRTIFFProfile(colorSpace.sdr, 'primary SDR', nil),
-    makeHDRTIFFProfile(colorSpace.hdr, 'HDR alternate', 'alternate-hdr')
+  return makeSDRTIFFProfile(
+    colorSpace.sdr,
+    LOC '$$$/LRExportHEIC/Rendition/PrimarySDR=primary SDR',
+    nil
+  ),
+    makeHDRTIFFProfile(
+      colorSpace.hdr,
+      LOC '$$$/LRExportHEIC/Rendition/HDRAlternate=HDR alternate',
+      'alternate-hdr'
+    )
 end
 
 ---@param exportSettings table<string, any>
@@ -212,7 +230,10 @@ function ExportPlan:encoderCommand(primaryPath, alternatePath, outputPath)
     .. shellQuote(primaryPath)
 
   if self.alternateArgument then
-    assert(alternatePath, 'Missing alternate rendition path')
+    assert(
+      alternatePath,
+      LOC '$$$/LRExportHEIC/Error/MissingAlternatePath=Missing alternate rendition path'
+    )
     command = command
       .. ' '
       .. self.alternateArgument

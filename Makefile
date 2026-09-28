@@ -1,3 +1,5 @@
+LRPLUGIN_FILES := $(shell find LRPlugin -type f | sort)
+
 ### DEBUG BUILD ###
 
 debug: \
@@ -35,10 +37,10 @@ build-debug/hdr-image-tool: .build/debug/hdr-image-tool
 	cd $(@D) && ln -s -f ../$< ./
 
 build-debug/ExportHEIC.lrdevplugin: \
-		$(wildcard LRPlugin/*) \
+		$(LRPLUGIN_FILES) \
 		build-debug/ConvertToHeic
 	mkdir -p $@/ConverterWrapper.app/Contents/MacOS/
-	cd $@ && for f in $(wildcard LRPlugin/*.lua); do ln -s -f ../../$$f; done
+	cd $@ && for f in $(wildcard LRPlugin/*.lua LRPlugin/*.txt); do ln -s -f ../../$$f; done
 	scripts/update_version.sh LRPlugin/Info.lua.template > $@/Info.lua
 	cd $@/ConverterWrapper.app/Contents/MacOS && ln -s -f ../../../../ConvertToHeic
 	@touch -c $@
@@ -113,11 +115,11 @@ release-notarize: build-release/notarize.log
 #=== step 2 end: release-notarize ===
 
 build-release/ExportHEIC.lrplugin: \
-		$(wildcard LRPlugin/*) \
+		$(LRPLUGIN_FILES) \
 		build-release/notarize.log \
 		build-release/Applications
 	mkdir -p $@
-	cd $@ && for f in $(wildcard LRPlugin/*.lua); do ln -s -f ../../$$f; done
+	cd $@ && for f in $(wildcard LRPlugin/*.lua LRPlugin/*.txt); do ln -s -f ../../$$f; done
 	scripts/update_version.sh LRPlugin/Info.lua.template > $@/Info.lua
 	cd $@ && ln -s -f ../Applications/ConverterWrapper.app/
 	@touch -c $@
@@ -151,7 +153,8 @@ fmt:
 
 test:
 	swift test
-	scripts/test_update_version.sh
+	scripts/localization_test.sh
+	scripts/update_version_test.sh
 
 clean: clean-debug clean-release
 

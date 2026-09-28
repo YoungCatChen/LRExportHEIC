@@ -1,17 +1,17 @@
 return {
   LrSdkVersion = 6.0,
   LrToolkitIdentifier = 'net.youngcat.LRExportHEIC',
-  LrPluginName = 'Export HEIC',
+  LrPluginName = LOC '$$$/LRExportHEIC/PluginName=Export HEIC',
   VERSION = { major = 1, minor = 0, revision = 0, build = 0 },
   LrPluginInfoProvider = 'PluginInfoProvider.lua',
   LrExportFilterProvider = {
-    title = 'Export HEIC',
+    title = LOC '$$$/LRExportHEIC/PluginName=Export HEIC',
     file = 'ExportHEIC.lua',
     id = 'Export HEIC',
     supportsVideo = 'false',
   },
   LrExportServiceProvider = {
-    title = 'Export HEIC',
+    title = LOC '$$$/LRExportHEIC/PluginName=Export HEIC',
     file = 'ExportHEIC.lua',
     id = 'Export HEIC',
     supportsVideo = 'false',

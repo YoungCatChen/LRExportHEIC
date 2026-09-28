@@ -96,21 +96,21 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
   })
 
   return {
-    title = 'HEIC Settings',
+    title = LOC '$$$/LRExportHEIC/UI/Settings=HEIC Settings',
 
     f:row {
       fill_horizontal = 0,
       spacing = 12,
 
       f:group_box {
-        title = 'Encoding',
+        title = LOC '$$$/LRExportHEIC/UI/Encoding=Encoding',
         fill_vertical = 1,
         spacing = 8,
 
         f:row {
           spacing = 4,
           f:static_text {
-            title = 'Quality:',
+            title = LOC '$$$/LRExportHEIC/UI/Quality=Quality:',
             enabled = negbind 'HEICUseSizeLimit',
             width = encodingLabelWidth,
             alignment = 'right',
@@ -144,7 +144,7 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
           f:static_text { width = encodingLabelWidth },
           f:static_text { width = 0 },
           f:checkbox {
-            title = 'Limit file size to:',
+            title = LOC '$$$/LRExportHEIC/UI/LimitFileSize=Limit file size to:',
             value = bind 'HEICUseSizeLimit',
           },
           f:edit_field {
@@ -167,7 +167,7 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
         f:row {
           spacing = 4,
           f:static_text {
-            title = 'Minimum:',
+            title = LOC '$$$/LRExportHEIC/UI/Minimum=Minimum:',
             enabled = bind 'HEICUseSizeLimit',
             width = encodingLabelWidth,
             alignment = 'right',
@@ -199,7 +199,7 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
         f:row {
           spacing = 4,
           f:static_text {
-            title = 'Maximum:',
+            title = LOC '$$$/LRExportHEIC/UI/Maximum=Maximum:',
             enabled = bind 'HEICUseSizeLimit',
             width = encodingLabelWidth,
             alignment = 'right',
@@ -231,7 +231,7 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
         f:row {
           spacing = 4,
           f:static_text {
-            title = 'Bit Depth:',
+            title = LOC '$$$/LRExportHEIC/UI/BitDepth=Bit Depth:',
             width = encodingLabelWidth,
             alignment = 'right',
           },
@@ -245,7 +245,7 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
         f:row {
           spacing = 4,
           f:static_text {
-            title = 'Color Space:',
+            title = LOC '$$$/LRExportHEIC/UI/ColorSpace=Color Space:',
             width = encodingLabelWidth,
             alignment = 'right',
           },
@@ -265,14 +265,14 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
         spacing = 12,
 
         f:group_box {
-          title = 'HDR',
+          title = LOC '$$$/LRExportHEIC/UI/HDR=HDR',
           fill_horizontal = 1,
           spacing = 8,
 
           f:row {
             margin_left = hdrLabelWidth - 8,
             f:checkbox {
-              title = 'HDR Output',
+              title = LOC '$$$/LRExportHEIC/UI/HDROutput=HDR Output',
               value = bind 'HEICUseHDR',
             },
           },
@@ -280,7 +280,7 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
           f:row {
             spacing = 4,
             f:static_text {
-              title = 'Mode:',
+              title = LOC '$$$/LRExportHEIC/UI/Mode=Mode:',
               width = hdrLabelWidth,
               alignment = 'right',
               enabled = bind 'HEICUseHDR',
@@ -294,25 +294,30 @@ function UI.sectionForFilterInDialog(viewFactory, propertyTable)
             f:static_text {
               title = 'ⓘ',
               visible = adaptiveHDROnly,
-              tooltip = 'Due to an ImageIO limitation, the gain map has a '
-                .. 'minimum quality of 90%, and is always encoded at '
-                .. '8 bits/component.',
+              tooltip = LOC(
+                '$$$/LRExportHEIC/UI/GainMapLimit=Due to an ImageIO '
+                  .. 'limitation, the gain map has a minimum quality of 90%, '
+                  .. 'and is always encoded at 8 bits/component.'
+              ),
             },
           },
 
         },
 
         f:group_box {
-          title = 'Diagnostics',
+          title = LOC '$$$/LRExportHEIC/UI/Diagnostics=Diagnostics',
           fill_horizontal = 1,
           spacing = 8,
           margin_left = 12,
 
           f:checkbox {
             value = bind 'HEICKeepIntermediates',
-            title = 'Keep intermediate files',
-            tooltip = 'Preserves Lightroom-rendered encoder inputs next '
-              .. 'to the output for inspection.',
+            title = LOC '$$$/LRExportHEIC/UI/KeepIntermediates=Keep intermediate files',
+            tooltip = LOC(
+              '$$$/LRExportHEIC/UI/KeepIntermediatesTooltip=Preserves '
+                .. 'Lightroom-rendered encoder inputs next to the output '
+                .. 'for inspection.'
+            ),
           },
         },
       },

@@ -90,15 +90,23 @@ end
 local function waitForRender(rendition, profile)
   local success, pathOrMessage = rendition:waitForRender()
   if not success then
-    error(profile.label .. ' rendition failed: ' .. tostring(pathOrMessage))
+    error(
+      LOC(
+        '$$$/LRExportHEIC/Error/RenditionFailed=^1 rendition failed: ^2',
+        profile.label,
+        tostring(pathOrMessage)
+      )
+    )
   end
   local extension = string.lower(LrPathUtils.extension(pathOrMessage) or '')
   if not profile.extensions[extension] then
     error(
-      'Lightroom returned an unexpected '
-        .. profile.label
-        .. ' rendition: '
-        .. tostring(pathOrMessage)
+      LOC(
+        '$$$/LRExportHEIC/Error/UnexpectedRendition=Lightroom returned an '
+          .. 'unexpected ^1 rendition: ^2',
+        profile.label,
+        tostring(pathOrMessage)
+      )
     )
   end
   return pathOrMessage
@@ -127,14 +135,17 @@ local function readEncoderOutput(path)
   end
   local readSucceeded, contentsOrError = pcall(LrFileUtils.readFile, path)
   if not readSucceeded then
-    return 'Could not read encoder output: ' .. tostring(contentsOrError)
+    return LOC(
+      '$$$/LRExportHEIC/Error/ReadEncoderOutput=Could not read encoder output: ^1',
+      tostring(contentsOrError)
+    )
   end
 
   local contents = contentsOrError:gsub('%s+$', '')
   local maximumLength = 16384
   if #contents > maximumLength then
     return contents:sub(1, maximumLength)
-      .. '\n... encoder output truncated ...'
+      .. LOC '$$$/LRExportHEIC/Error/EncoderOutputTruncated=^n... encoder output truncated ...'
   end
   return contents
 end
@@ -193,10 +204,12 @@ function RenditionJob:renderAlternate()
     local renderedPath = waitForRender(rendition, profile)
     if renderedPath ~= destinationPath then
       error(
-        'Lightroom rendered the alternate to an unexpected path: '
-          .. renderedPath
-          .. '; expected: '
-          .. destinationPath
+        LOC(
+          '$$$/LRExportHEIC/Error/UnexpectedAlternatePath=Lightroom rendered '
+            .. 'the alternate to an unexpected path: ^1; expected: ^2',
+          renderedPath,
+          destinationPath
+        )
       )
     end
 
@@ -204,7 +217,12 @@ function RenditionJob:renderAlternate()
     return
   end
 
-  error('Lightroom did not produce an ' .. profile.label .. ' rendition')
+  error(
+    LOC(
+      '$$$/LRExportHEIC/Error/MissingRendition=Lightroom did not produce an ^1 rendition',
+      profile.label
+    )
+  )
 end
 
 ---Invokes the Swift encoder and reports its captured diagnostics.
@@ -220,15 +238,17 @@ function RenditionJob:runEncoder(encoderCommand)
 
   if status ~= 0 then
     local exitCode = decodeExitStatus(status)
-    local message = 'HEIC encoder failed with exit code '
-      .. exitCode
-      .. ' (raw status '
-      .. status
-      .. ')'
-      .. '\nCommand: '
-      .. encoderCommand
+    local message = LOC(
+      '$$$/LRExportHEIC/Error/EncoderFailed=HEIC encoder failed with exit '
+        .. 'code ^1 (raw status ^2)^nCommand: ^3',
+      exitCode,
+      status,
+      encoderCommand
+    )
     if encoderOutput ~= '' then
-      message = message .. '\nOutput:\n' .. encoderOutput
+      message = message
+        .. LOC '$$$/LRExportHEIC/Error/EncoderOutput=^nOutput:^n'
+        .. encoderOutput
     end
     error(message)
   end
@@ -257,7 +277,10 @@ function RenditionJob:processActual()
 
   self:runEncoder(encoderCommand)
 
-  return 'Exported HEIC to ' .. self.outputRendition.destinationPath
+  return LOC(
+    '$$$/LRExportHEIC/Status/Exported=Exported HEIC to ^1',
+    self.outputRendition.destinationPath
+  )
 end
 
 ---Runs one rendition job with exception-safe cleanup and completion reporting.
@@ -270,7 +293,10 @@ function RenditionJob:process()
   local processed = callSucceeded
   local message = resultOrError
   if not processed then
-    message = 'Rendition processing failed: ' .. tostring(resultOrError)
+    message = LOC(
+      '$$$/LRExportHEIC/Error/ProcessingFailed=Rendition processing failed: ^1',
+      tostring(resultOrError)
+    )
   end
 
   if self.plan.keepIntermediates and self.primaryPath then
@@ -280,7 +306,11 @@ function RenditionJob:process()
     end
     local pathList = table.concat(paths, ', ')
     logger:info('Intermediate TIFFs: ' .. pathList)
-    message = message .. '; intermediate TIFFs: ' .. pathList
+    message = message
+      .. LOC(
+        '$$$/LRExportHEIC/Status/IntermediateTIFFs=; intermediate TIFFs: ^1',
+        pathList
+      )
   end
 
   self.workingSpace:cleanup()

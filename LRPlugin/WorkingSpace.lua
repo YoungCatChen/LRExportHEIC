@@ -17,7 +17,12 @@ local function createTemporaryDirectory()
   local path = LrPathUtils.child(tempRoot, leaf)
   LrFileUtils.createDirectory(path)
   if LrFileUtils.exists(path) ~= 'directory' then
-    error('Could not create temp directory: ' .. path)
+    error(
+      LOC(
+        '$$$/LRExportHEIC/Error/CreateTempDirectory=Could not create temp directory: ^1',
+        path
+      )
+    )
   end
   return path
 end

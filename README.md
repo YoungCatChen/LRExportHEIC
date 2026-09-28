@@ -1,5 +1,7 @@
 # LRExportHEIC
 
+[English](README.md) · [简体中文](README.zh-CN.md)
+
 _(Forked from [milch/LRExportHEIC](https://github.com/milch/LRExportHEIC).)_
 
 A plugin to allow Lightroom Classic to export HEIC / HEIF files.
@@ -65,7 +67,7 @@ However, this is entirely optional and is only a cosmetic change.
 
 ## Compatibility
 
-macOS only; okay on both Apple M1-M4 chips and Intel chips.
+macOS only; okay on both Apple M1-M5 chips and Intel chips.
 
 Because the CLI component is using macOS APIs to create the HEIC/HEIF file,
 the only supported platform is macOS. Theoretically there should be nothing
